@@ -13,11 +13,12 @@ const pool = new Pool({
   connectionString: CONNECTION_STRING,
 });
 
-// Helper function to generate a random category name
+// Set to track used category names
+const usedCategoryNames = new Set();
+
+// Helper function to generate a unique category name
 function generateCategoryName() {
-  const prefixes = ['Men\'s', 'Women\'s', 'Kids\'', 'Home', 'Outdoor', 'Tech', 'Sports', 'Luxury', 'Budget', 'Eco'];
-  const nouns = ['Clothing', 'Accessories', 'Electronics', 'Furniture', 'Appliances', 'Toys', 'Shoes', 'Jewelry', 'Books', 'Tools'];
-  return `${faker.helpers.arrayElement(prefixes)} ${faker.helpers.arrayElement(nouns)}`;
+  return faker.lorem.slug();
 }
 
 // Helper function to generate a random description
@@ -41,7 +42,7 @@ async function setupTable() {
     // Drop table if exists
     await client.query('DROP TABLE IF EXISTS category CASCADE');
     
-    // Create table
+    // Create table with hierarchy_code
     await client.query(`
       CREATE TABLE category (
         category_id SERIAL PRIMARY KEY,
@@ -50,7 +51,8 @@ async function setupTable() {
         parent_category_id INTEGER,
         is_active BOOLEAN,
         display_order INTEGER,
-        created_at TIMESTAMP
+        created_at TIMESTAMP,
+        hierarchy_code TEXT
       )
     `);
     
@@ -69,9 +71,13 @@ async function setupTable() {
 async function generateCategories() {
   let categories = [];
   let currentId = 1;
+  const topLevelCounters = {}; // Track top-level category indices
+  const childCounters = {}; // Track child indices per parent
 
   // Step 1: Generate top-level categories
   for (let i = 0; i < TOP_LEVEL_CATEGORIES; i++) {
+    const hierarchyCode = `${i + 1}`;
+    topLevelCounters[hierarchyCode] = 0; // Initialize child counter
     categories.push({
       category_id: currentId++,
       category_name: generateCategoryName(),
@@ -79,7 +85,8 @@ async function generateCategories() {
       parent_category_id: null,
       is_active: faker.datatype.boolean(),
       display_order: faker.number.int({ min: 1, max: 100 }),
-      created_at: generateRandomDate()
+      created_at: generateRandomDate(),
+      hierarchy_code: hierarchyCode
     });
   }
 
@@ -93,6 +100,12 @@ async function generateCategories() {
       // Randomly decide how many subcategories (0–20 per parent)
       const numSubcategories = faker.number.int({ min: 0, max: 20 });
       for (let i = 0; i < numSubcategories && categories.length + newCategories.length < TOTAL_CATEGORIES; i++) {
+        // Compute hierarchy code
+        childCounters[parent.category_id] = (childCounters[parent.category_id] || 0) + 1;
+        const hierarchyCode = parent.hierarchy_code 
+          ? `${parent.hierarchy_code}.${childCounters[parent.category_id]}`
+          : `${childCounters[parent.category_id]}`; // Fallback for top-level
+
         newCategories.push({
           category_id: currentId++,
           category_name: generateCategoryName(),
@@ -100,7 +113,8 @@ async function generateCategories() {
           parent_category_id: parent.category_id,
           is_active: faker.datatype.boolean(),
           display_order: faker.number.int({ min: 1, max: 100 }),
-          created_at: generateRandomDate()
+          created_at: generateRandomDate(),
+          hierarchy_code: hierarchyCode
         });
       }
     }
@@ -111,6 +125,11 @@ async function generateCategories() {
       // Fallback: Add remaining categories with random parents
       while (categories.length < TOTAL_CATEGORIES) {
         const randomParent = faker.helpers.arrayElement(categories);
+        childCounters[randomParent.category_id] = (childCounters[randomParent.category_id] || 0) + 1;
+        const hierarchyCode = randomParent.hierarchy_code 
+          ? `${randomParent.hierarchy_code}.${childCounters[randomParent.category_id]}`
+          : `${childCounters[randomParent.category_id]}`;
+
         categories.push({
           category_id: currentId++,
           category_name: generateCategoryName(),
@@ -118,7 +137,8 @@ async function generateCategories() {
           parent_category_id: randomParent.category_id,
           is_active: faker.datatype.boolean(),
           display_order: faker.number.int({ min: 1, max: 100 }),
-          created_at: generateRandomDate()
+          created_at: generateRandomDate(),
+          hierarchy_code: hierarchyCode
         });
       }
       break;
@@ -137,8 +157,8 @@ async function insertCategories(categories) {
     for (let i = 0; i < categories.length; i += BATCH_SIZE) {
       const batch = categories.slice(i, i + BATCH_SIZE);
       const values = batch.map((cat, index) => {
-        const offset = index * 7;
-        return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7})`;
+        const offset = index * 8; // Updated for hierarchy_code
+        return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8})`;
       }).join(',');
 
       const flatValues = batch.flatMap(cat => [
@@ -148,11 +168,12 @@ async function insertCategories(categories) {
         cat.parent_category_id,
         cat.is_active,
         cat.display_order,
-        cat.created_at
+        cat.created_at,
+        cat.hierarchy_code
       ]);
 
       await client.query(`
-        INSERT INTO category (category_id, category_name, description, parent_category_id, is_active, display_order, created_at)
+        INSERT INTO category (category_id, category_name, description, parent_category_id, is_active, display_order, created_at, hierarchy_code)
         VALUES ${values}
       `, flatValues);
 
