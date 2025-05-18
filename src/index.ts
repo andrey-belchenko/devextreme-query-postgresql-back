@@ -1,5 +1,6 @@
 import express, { Express, Request, Response, Router } from "express";
 const { Pool } = require("pg");
+const cors = require("cors");
 const CONNECTION_STRING = "postgresql://admin:admin@localhost:5432/postgres";
 
 const pool = new Pool({
@@ -8,6 +9,7 @@ const pool = new Pool({
 
 const app: Express = express();
 
+app.use(cors());
 app.use(express.json());
 
 const createUser = (req: Request, res: Response) => {
@@ -26,6 +28,7 @@ router.get("/", (req: Request, res: Response) => {
 
 app.post("/sales", async (req, res) => {
   try {
+    console.log(JSON.stringify(req.body))
     const queryText = `
       SELECT
         s.sale_id,
@@ -47,39 +50,11 @@ app.post("/sales", async (req, res) => {
         p.product_id = s.product_id
     `;
 
-    // Optional: Add query parameters from request body
-    const { startDate, endDate, category } = req.body;
-    let params = [];
-    let whereClauses = [];
-
-    if (startDate) {
-      params.push(startDate);
-      whereClauses.push(`s.sale_date >= $${params.length}`);
-    }
-
-    if (endDate) {
-      params.push(endDate);
-      whereClauses.push(`s.sale_date <= $${params.length}`);
-    }
-
-    if (category) {
-      params.push(category);
-      whereClauses.push(`p.category = $${params.length}`);
-    }
-
-    // Add WHERE clause if there are any conditions
-    let finalQuery = queryText;
-    if (whereClauses.length > 0) {
-      finalQuery += " WHERE " + whereClauses.join(" AND ");
-    }
-
-    // Execute the query
-    const { rows } = await pool.query(finalQuery, params);
+    const { rows } = await pool.query(queryText, []);
 
     res.json({
-      success: true,
       data: rows,
-      count: rows.length,
+      totalCount: rows.length
     });
   } catch (error) {
     console.error("Error executing query:", error);
