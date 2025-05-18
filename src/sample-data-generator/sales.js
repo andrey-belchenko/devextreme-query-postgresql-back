@@ -26,7 +26,7 @@ async function setupDatabase() {
 
     // Drop tables if they exist
     await client.query("DROP TABLE IF EXISTS smpl.sales");
-    await client.query("DROP TABLE IF EXISTS smpl.products");
+    await client.query("DROP TABLE IF EXISTS smpl.product");
     await client.query("DROP TABLE IF EXISTS smpl.customer");
 
     // Create tables
@@ -40,7 +40,7 @@ async function setupDatabase() {
     `);
 
     await client.query(`
-      CREATE TABLE smpl.products (
+      CREATE TABLE smpl.product (
         product_id SERIAL PRIMARY KEY,
         name TEXT,
         category TEXT
@@ -108,7 +108,7 @@ async function populateProducts() {
     // Insert products one by one
     for (const product of products) {
       await client.query(
-        "INSERT INTO smpl.products (name, category) VALUES ($1, $2)",
+        "INSERT INTO smpl.product (name, category) VALUES ($1, $2)",
         product
       );
     }
@@ -126,7 +126,7 @@ async function populateSales() {
   const client = await pool.connect();
   try {
     const customerIds = (await client.query("SELECT customer_id FROM smpl.customer")).rows.map(r => r.customer_id);
-    const productIds = (await client.query("SELECT product_id FROM smpl.products")).rows.map(r => r.product_id);
+    const productIds = (await client.query("SELECT product_id FROM smpl.product")).rows.map(r => r.product_id);
 
     const totalBatches = Math.ceil(COUNTS.SALES / COUNTS.SALES_BATCH_SIZE);
 
