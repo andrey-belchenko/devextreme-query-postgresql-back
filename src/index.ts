@@ -12,23 +12,10 @@ const app: Express = express();
 app.use(cors());
 app.use(express.json());
 
-const createUser = (req: Request, res: Response) => {
-  const { name } = req.body;
-  res.status(201).json({ id: Math.random(), name });
-};
-
-const router = Router();
-
-router.get("/", (req: Request, res: Response) => {
-  res.json([
-    { id: 1, name: "John Doe" },
-    { id: 2, name: "Jane Doe" },
-  ]);
-});
-
 app.post("/sales", async (req, res) => {
+  const client = await pool.connect();
   try {
-    console.log(JSON.stringify(req.body))
+    console.log(JSON.stringify(req.body));
     const queryText = `
       SELECT
         s.sale_id,
@@ -50,11 +37,11 @@ app.post("/sales", async (req, res) => {
         p.product_id = s.product_id
     `;
 
-    const { rows } = await pool.query(queryText, []);
+    const { rows } = await client.query(queryText, []);
 
     res.json({
       data: rows,
-      totalCount: rows.length
+      totalCount: rows.length,
     });
   } catch (error) {
     console.error("Error executing query:", error);
@@ -62,12 +49,10 @@ app.post("/sales", async (req, res) => {
       success: false,
       error: "Internal server error",
     });
+  } finally {
+    client.release();
   }
 });
-
-router.post("/", createUser);
-
-app.use("/api/users", router);
 
 const port = 3000;
 app.listen(port, () => {
