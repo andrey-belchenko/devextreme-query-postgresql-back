@@ -23,6 +23,7 @@ export class Processor {
   queryText: string;
   filteredQueryText?: string;
   sortedQueryText?: string;
+  limitedQueryText?: string;
   queryParams: any[];
   loadOptions: LoadOptions;
   executor: (params: ExecutorOptions) => Promise<any[]>;
@@ -39,6 +40,7 @@ export class Processor {
   async execute(): Promise<ExecResult> {
     this.filter();
     this.sort();
+    this.limit();
     await this.totalCount();
     await this.data();
     return this.result;
@@ -46,7 +48,7 @@ export class Processor {
 
   private async data() {
     const rows: any[] = await this.executor({
-      queryText: this.sortedQueryText!,
+      queryText: this.limitedQueryText!,
       queryParams: this.queryParams,
     });
     this.result.data = rows;
@@ -82,5 +84,17 @@ export class Processor {
     }
 
     this.sortedQueryText += `\norder by ${sortExpr.join(",")}`;
+  }
+
+  private limit() {
+    this.limitedQueryText = this.sortedQueryText;
+    if (this.loadOptions.skip) {
+      this.limitedQueryText += ` offset ${this.loadOptions.skip}`;
+    }
+
+    if (this.loadOptions.take) {
+      this.limitedQueryText += ` limit ${this.loadOptions.take}`;
+    }
+    
   }
 }

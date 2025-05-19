@@ -50,6 +50,7 @@ app.post("/sales", async (req, res) => {
     });
 
     const result = await processor.execute();
+    console.log(`COUNT: ${result?.data?.length} TOTAL: ${result.totalCount}`);
     res.json(result);
   } catch (error) {
     console.error("Error executing query:", error);
