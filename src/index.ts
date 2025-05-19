@@ -1,4 +1,6 @@
 import express, { Express, Request, Response, Router } from "express";
+import { Processor } from "./processor";
+import { LoadOptions } from "./load-options";
 const { Pool } = require("pg");
 const cors = require("cors");
 const CONNECTION_STRING = "postgresql://admin:admin@localhost:5432/postgres";
@@ -16,6 +18,7 @@ app.post("/sales", async (req, res) => {
   const client = await pool.connect();
   try {
     console.log(JSON.stringify(req.body));
+    const loadOptions = req.body.loadOptions as LoadOptions;
     const queryText = `
       SELECT
         s.sale_id,
@@ -37,12 +40,17 @@ app.post("/sales", async (req, res) => {
         p.product_id = s.product_id
     `;
 
-    const { rows } = await client.query(queryText, []);
-
-    res.json({
-      data: rows,
-      totalCount: rows.length,
+    const processor = new Processor({
+      queryText,
+      loadOptions,
+      executor: async (opt) => {
+        const { rows } = await client.query(opt.queryText, opt.queryParams);
+        return rows;
+      },
     });
+
+    const result = await processor.execute();
+    res.json(result);
   } catch (error) {
     console.error("Error executing query:", error);
     res.status(500).json({
