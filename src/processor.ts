@@ -1,9 +1,31 @@
 import { LoadOptions } from "./load-options";
-import { Query, SqlExpressions } from "./sql-expressions";
+import {
+  ColumnDefinition,
+  OrderByItem,
+  Query,
+  QueryParam,
+  SqlExpressions,
+} from "./sql-expressions";
 
 export interface ExecutorOptions {
   queryText: string;
   queryParams: any[];
+}
+
+
+
+export interface ExecResult {
+  data?: any[];
+  totalCount?: number;
+}
+
+export class SqlStatement {
+  params: QueryParam[] = [];
+  select: ColumnDefinition[] = [];
+  orderBy: OrderByItem[] = [];
+  copy() {
+    return { ...this };
+  }
 }
 
 export interface ProcessorProps {
@@ -11,11 +33,6 @@ export interface ProcessorProps {
   queryParams?: any[];
   loadOptions: LoadOptions;
   executor: (params: ExecutorOptions) => Promise<any[]>;
-}
-
-export interface ExecResult {
-  data?: any[];
-  totalCount?: number;
 }
 
 export class Processor {
@@ -95,6 +112,5 @@ export class Processor {
     if (this.loadOptions.take) {
       this.limitedQueryText += ` limit ${this.loadOptions.take}`;
     }
-    
   }
 }

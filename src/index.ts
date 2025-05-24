@@ -16,6 +16,7 @@ app.use(cors());
 app.use(express.json());
 
 app.post("/sales", async (req, res) => {
+   console.log("PG");
   const client = await pool.connect();
   try {
     console.log(JSON.stringify(req.body));
@@ -65,12 +66,15 @@ app.post("/sales", async (req, res) => {
 });
 
 app.post("/mongo/sales", async (req, res) => {
+  console.log("MONGO");
+  console.log(JSON.stringify(req.body));
   const loadOptions = req.body.loadOptions as LoadOptions;
   const result = await execQuery({
     loadOptions,
     collection: "sales",
   });
-  return result;
+   console.log(`COUNT: ${result?.data?.length} TOTAL: ${result.totalCount}`);
+  res.json(result);
 });
 
 const port = 3000;

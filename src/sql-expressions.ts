@@ -16,6 +16,12 @@ class ExprText extends ExprNode {
   }
 }
 
+export class QueryParam extends ExprNode {
+  constructor(public value: any) {
+    super();
+  }
+}
+
 class TextQuery {
   constructor(public text: string) {}
 }
@@ -36,8 +42,12 @@ class ColumnReference extends ExprNode {
   }
 }
 
-class ColumnDefinition {
+export class ColumnDefinition {
   constructor(public expr: ExprNode, public alias: string) {}
+}
+
+export class OrderByItem {
+  constructor(public expr: ExprNode, isDesc: boolean) {}
 }
 
 class SourceDefinition {
