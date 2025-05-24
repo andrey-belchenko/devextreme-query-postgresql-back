@@ -1,6 +1,7 @@
 import express, { Express, Request, Response, Router } from "express";
 import { Processor } from "./processor";
 import { LoadOptions } from "./load-options";
+import { execQuery } from "./mongo";
 const { Pool } = require("pg");
 const cors = require("cors");
 const CONNECTION_STRING = "postgresql://admin:admin@localhost:5432/postgres";
@@ -61,6 +62,15 @@ app.post("/sales", async (req, res) => {
   } finally {
     client.release();
   }
+});
+
+app.post("/mongo/sales", async (req, res) => {
+  const loadOptions = req.body.loadOptions as LoadOptions;
+  const result = await execQuery({
+    loadOptions,
+    collection: "sales",
+  });
+  return result;
 });
 
 const port = 3000;
