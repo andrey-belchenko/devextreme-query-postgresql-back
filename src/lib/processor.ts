@@ -1,4 +1,3 @@
-import { an } from "@faker-js/faker/dist/airline-BUL6NtOJ";
 import { LoadOptions } from "./load-options";
 import {
   ColumnDefinition,
@@ -9,8 +8,8 @@ import {
   OrderByItem,
   QueryParam,
   SqlExpressions,
-  SqlExpressionsPg,
 } from "./sql-expressions";
+import { SqlExpressionsPg } from "./sql-expressions-pg";
 
 export interface ExecutorOptions {
   statement: SqlStatement;
