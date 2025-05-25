@@ -2,8 +2,9 @@ import { LoadOptions } from "./load-options";
 import {
   ColumnDefinition,
   ColumnReference,
+  ExprElement,
+  ExprNode,
   OrderByItem,
-  Query,
   QueryParam,
   SqlExpressions,
 } from "./sql-expressions";
@@ -32,6 +33,7 @@ interface SqlStatementProps {
   orderBy?: OrderByItem[];
   offset?: number;
   limit?: number;
+  filter?: ExprElement;
 }
 export class SqlStatement {
   params: QueryParam[];
@@ -39,6 +41,7 @@ export class SqlStatement {
   orderBy: OrderByItem[];
   offset?: number;
   limit?: number;
+  filter?: ExprElement;
 
   constructor(props: SqlStatementProps = {}) {
     this.params = props.params || [];
@@ -46,10 +49,21 @@ export class SqlStatement {
     this.orderBy = props.orderBy || [];
     this.offset = props.offset;
     this.limit = props.limit;
+    this.filter = props.filter;
   }
 
   buildQuery(params: BuildQueryParams): SqlQuery {
     const sourceQuery = params.sourceQuery;
+    const paramValues = [...(sourceQuery.paramValues || [])];
+
+    let paramIndex = paramValues.length;
+
+    for (const param of this.params) {
+      paramIndex++;
+      param.index = paramIndex;
+      paramValues.push(param.value);
+    }
+
     const srcAlias = "src";
     const sqlTextItems = [`with ${srcAlias} as (\n${sourceQuery.queryText}\n)`];
     const selectExpr = this.select?.length
@@ -57,6 +71,10 @@ export class SqlStatement {
       : " * ";
     sqlTextItems.push(`select ${selectExpr}`);
     sqlTextItems.push(`from ${srcAlias}`);
+
+    if (this.filter) {
+      sqlTextItems.push(`where ${this.filter.toSql()}`);
+    }
 
     if (this.orderBy?.length) {
       sqlTextItems.push(
@@ -71,9 +89,9 @@ export class SqlStatement {
       sqlTextItems.push(`limit ${this.limit}`);
     }
 
-    
     return {
       queryText: sqlTextItems.join("\n"),
+      paramValues,
     };
   }
 
@@ -92,19 +110,43 @@ const columnNames = {
 };
 
 export interface ProcessorProps {
-  queryText: string;
-  queryParams?: any[];
   loadOptions: LoadOptions;
   executor: (params: SqlStatement) => Promise<any[]>;
 }
 
+interface LoadOptionsPredicate {
+  operator: string;
+  items: any[];
+}
+
+function normalizePredicate(rawPredicate: any[] | any): LoadOptionsPredicate {
+  if (!Array.isArray(rawPredicate)) {
+    return rawPredicate;
+  }
+  let first = rawPredicate[0];
+  let second = rawPredicate[1];
+  let operator: string = "";
+  let rawItems = [];
+  if (first === "!") {
+    operator = "!";
+    rawItems.push(second);
+  } else {
+    operator = second;
+    let skip = false;
+    for (let item of rawPredicate) {
+      if (!skip) {
+        rawItems.push(item);
+      }
+      skip = !skip;
+    }
+  }
+  return {
+    operator,
+    items: rawItems.map((it: any) => normalizePredicate(it)),
+  };
+}
+
 export class Processor {
-  result: ExecResult = {};
-  queryText: string;
-  filteredQueryText?: string;
-  sortedQueryText?: string;
-  limitedQueryText?: string;
-  queryParams: any[];
   loadOptions: LoadOptions;
   executor: (params: SqlStatement) => Promise<any[]>;
   sqlExpressions: SqlExpressions;
@@ -112,9 +154,7 @@ export class Processor {
   constructor(props: ProcessorProps) {
     this.executor = props.executor;
     this.loadOptions = props.loadOptions;
-    this.queryParams = props.queryParams || [];
     this.sqlExpressions = new SqlExpressions();
-    this.queryText = props.queryText;
   }
 
   async execute(): Promise<ExecResult> {
@@ -124,30 +164,66 @@ export class Processor {
     const limited = this.createLimitedStatement(sorted);
     const totalStatement = this.createTotalStatement(filtered);
     let result = {} as ExecResult;
-    result = await this.queryTotalCount(result, totalStatement);
     result = await this.queryData(result, limited);
+    result = await this.queryTotalCount(result, totalStatement);
     return result;
   }
 
+  private convertPredicate(
+    predicate: LoadOptionsPredicate,
+    statement: SqlStatement
+  ): ExprElement {
+    const sqlExpr = this.sqlExpressions;
+    let func: (any: ExprNode[]) => ExprElement = () => undefined as any;
+    switch (predicate.operator) {
+      case "and":
+        func = sqlExpr.and;
+        break;
+      case "or":
+        func = sqlExpr.or;
+        break;
+      case "!":
+        func = sqlExpr.not;
+        break;
+      case "contains":
+        func = sqlExpr.contains;
+        break;
+      default:
+        throw Error(`Unknown operator '${predicate.operator}'`);
+    }
+    if (!["and", "or", "!"].includes(predicate.operator)) {
+      const param = new QueryParam(predicate.items[1]);
+      statement.params.push(param);
+      return func([new ColumnReference(predicate.items[0]), param]);
+    } else {
+      return func(
+        predicate.items.map((it) =>
+          this.convertPredicate(it as LoadOptionsPredicate, statement)
+        )
+      );
+    }
+  }
+
   private createFilteredStatement(base: SqlStatement): SqlStatement {
-    return base.copy();
-    // this.filteredQueryText = this.queryText;
+    const result = base.copy();
+    if (this.loadOptions.filter) {
+      const filter = normalizePredicate(this.loadOptions.filter);
+      result.filter = this.convertPredicate(
+        filter,
+        result
+      );
+    }
+    return result;
   }
 
   private createSortedStatement(base: SqlStatement): SqlStatement {
     const result = base.copy();
     if (!this.loadOptions.sort) return result;
-
-    // this.sortedQueryText = this.filteredQueryText;
-    // if (!this.loadOptions.sort) return;
-
     const sortOptions = Array.isArray(this.loadOptions.sort)
       ? this.loadOptions.sort
       : [this.loadOptions.sort];
 
     if (!sortOptions.length) return result;
-
-    // const sortExpr = [];
     for (let sortOption of sortOptions as any[]) {
       result.orderBy.push(
         new OrderByItem(
@@ -155,11 +231,8 @@ export class Processor {
           sortOption?.desc
         )
       );
-      // sortExpr.push(`${sortOption.selector} ${sortOption.desc ? "desc" : ""}`);
     }
     return result;
-
-    // this.sortedQueryText += `\norder by ${sortExpr.join(",")}`;
   }
 
   private createLimitedStatement(base: SqlStatement): SqlStatement {

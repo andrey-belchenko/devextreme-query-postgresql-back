@@ -1,0 +1,13 @@
+[
+    [
+      "customer_name",
+      "contains",
+      "fae"
+    ],
+    "and",
+    [
+      "product_name",
+      "contains",
+      "oap"
+    ]
+  ]

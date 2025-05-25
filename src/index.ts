@@ -19,8 +19,10 @@ app.post("/sales", async (req, res) => {
   console.log("PG");
   const client = await pool.connect();
   try {
-    console.log(JSON.stringify(req.body));
+    // console.log(JSON.stringify(req.body));
     const loadOptions = req.body.loadOptions as LoadOptions;
+    console.log("PG LOAD OPTIONS:");
+    console.log(JSON.stringify(loadOptions, null, 2));
     const queryText = `
       SELECT
         s.sale_id,
@@ -43,13 +45,12 @@ app.post("/sales", async (req, res) => {
     `;
 
     const processor = new Processor({
-      queryText,
       loadOptions,
       executor: async (statement) => {
         const query = statement.buildQuery({
           sourceQuery: { queryText: queryText },
         });
-        console.log(query.queryText);
+        // console.log(query.queryText);
         const { rows } = await client.query(query.queryText, query.paramValues);
         return rows;
       },
@@ -57,6 +58,8 @@ app.post("/sales", async (req, res) => {
 
     const result = await processor.execute();
     console.log(`COUNT: ${result?.data?.length} TOTAL: ${result.totalCount}`);
+    console.log("PG RESULT:");
+    console.log(JSON.stringify(result, null, 2));
     res.json(result);
   } catch (error) {
     console.error("Error executing query:", error);
@@ -70,14 +73,18 @@ app.post("/sales", async (req, res) => {
 });
 
 app.post("/mongo/sales", async (req, res) => {
-  console.log("MONGO");
-  console.log(JSON.stringify(req.body));
+  // console.log("MONGO");
+  // console.log(JSON.stringify(req.body));
   const loadOptions = req.body.loadOptions as LoadOptions;
+  console.log("MONGO LOAD OPTIONS:");
+  console.log(JSON.stringify(loadOptions, null, 2));
   const result = await execQuery({
     loadOptions,
     collection: "sales",
   });
-  console.log(`COUNT: ${result?.data?.length} TOTAL: ${result.totalCount}`);
+  // console.log(`COUNT: ${result?.data?.length} TOTAL: ${result.totalCount}`);
+  console.log("MONGO RESULT:");
+  console.log(JSON.stringify(result, null, 2));
   res.json(result);
 });
 

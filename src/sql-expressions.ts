@@ -1,15 +1,15 @@
-abstract class ExprNode {
+export abstract class ExprNode {
   abstract toSql(): string;
 }
 
-class ExprElement extends ExprNode {
+export class ExprElement extends ExprNode {
   items: ExprNode[];
   constructor(items: ExprNode[]) {
     super();
     this.items = items;
   }
   toSql(): string {
-    return this.items.map((it) => it.toSql()).join(" ");
+    return "(" + this.items.map((it) => it.toSql()).join(" ") + ")";
   }
 }
 
@@ -84,27 +84,58 @@ export class SqlExpressions {
     return new ExprElement([new ExprText("sum ("), item, new ExprText(")")]);
   }
 
+  and(items: ExprNode[]) {
+    const exprNodes: ExprNode[] = [];
+    let first = true;
+    for (const item of items) {
+      if (!first) {
+        exprNodes.push(new ExprText(" and "));
+      }
+      exprNodes.push(item);
+      first = false;
+    }
+    return new ExprElement(exprNodes);
+  }
+
+  or(items: ExprNode[]) {
+    const exprNodes: ExprNode[] = [];
+    let first = true;
+    for (const item of items) {
+      if (!first) {
+        exprNodes.push(new ExprText(" or "));
+      }
+      exprNodes.push(item);
+    }
+    return new ExprElement(exprNodes);
+  }
+
+  not(items: ExprNode[]) {
+    const exprNodes: ExprNode[] = [];
+    let first = true;
+    for (const item of items) {
+      if (!first) {
+        exprNodes.push(new ExprText(" or "));
+      }
+      exprNodes.push(item);
+    }
+    return new ExprElement([
+      new ExprText(" not ("),
+      items[0],
+      new ExprText(")"),
+    ]);
+  }
+
+  contains(items: ExprNode[]) {
+    return new ExprElement([
+      new ExprText("upper("),
+      items[0],
+      new ExprText(") like '%' || upper("),
+      items[1],
+      new ExprText(") || '%' "),
+    ]);
+  }
+
   rowsCount() {
-    return new ExprText("count(*)");
-  }
-
-  textQuery(text: string): TextQuery {
-    return new TextQuery(text);
-  }
-
-  tableAlias(alias: string): TableAlias {
-    return new TableAlias(alias);
-  }
-
-  from(query: Query) {
-    return new SourceDefinition(query);
-  }
-
-  select(columns: ColumnDefinition[], from: Query) {
-    return new SelectQuery(columns, from);
-  }
-
-  columnDef(expr: ExprNode, alias: string) {
-    return new ColumnDefinition(expr, alias);
+    return new ExprText("count(*)::int");
   }
 }
