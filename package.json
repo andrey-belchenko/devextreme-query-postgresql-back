@@ -18,9 +18,7 @@
     "@types/node": "^22.15.18",
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
-    "typescript": "^5.8.3"
-  },
-  "dependencies": {
+    "typescript": "^5.8.3",
     "@faker-js/faker": "^9.8.0",
     "babel-polyfill": "^6.26.0",
     "cors": "^2.8.5",
@@ -29,5 +27,6 @@
     "mongodb": "^6.16.0",
     "pg": "^8.16.0",
     "pg-cursor": "^2.15.0"
-  }
+  },
+  "dependencies": {}
 }
