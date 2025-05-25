@@ -1,6 +1,6 @@
 import express, { Express, Request, Response, Router } from "express";
-import { Processor } from "./processor";
-import { LoadOptions } from "./load-options";
+import { Processor } from "../lib/processor";
+import { LoadOptions } from "../lib/load-options";
 import { execQuery } from "./mongo";
 const { Pool } = require("pg");
 const cors = require("cors");

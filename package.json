@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node dist/index.js",
     "build": "tsc",
-    "dev": "nodemon src/index.ts",
+    "dev": "nodemon src/dev/app.ts",
     "generate-sample-data": "node src/sample-data-generator/sales.js",
     "pg-to-mongo": "node src/sample-data-generator/pg-to-mongo.js"
   },

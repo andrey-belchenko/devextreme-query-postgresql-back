@@ -59,6 +59,7 @@ export class OrderByItem {
 }
 
 export class SqlExpressions {
+  
   sum(item: ExprNode) {
     return new ExprElement([new ExprText("sum ("), item, new ExprText(")")]);
   }
