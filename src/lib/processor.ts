@@ -215,9 +215,9 @@ export class Processor {
   private convertPredicate(
     predicate: LoadOptionsPredicate,
     statement: SqlStatement
-  ): ExprElement {
+  ): any[] {
     const sqlExpr = this.sqlExpressions;
-    let func: (any: ExprNode[]) => ExprElement = undefined as any;
+    let func: (params: any[]) => any[] = undefined as any;
     switch (predicate.operator) {
       case "and":
         func = sqlExpr.and;
@@ -281,7 +281,7 @@ export class Processor {
     const result = base.copy();
     if (this.loadOptions.filter) {
       const filter = this.normalizePredicate(this.loadOptions.filter);
-      result.filter = this.convertPredicate(filter, result);
+      result.filter = new ExprElement(this.convertPredicate(filter, result));
     }
     return result;
   }
@@ -334,7 +334,7 @@ export class Processor {
     const result = base.copy();
     result.select = [
       new ColumnDefinition(
-        this.sqlExpressions.rowsCount([new ExprText("*")]),
+        new ExprElement(this.sqlExpressions.rowsCount([new ExprText("*")])),
         columnNames.totalCount
       ),
     ];

@@ -4,11 +4,15 @@ export abstract class ExprNode {
 
 export class ExprElement extends ExprNode {
   items: ExprNode[];
-  constructor(items: (ExprNode | string)[]) {
+  constructor(items: (ExprNode | string)[] | ExprElement) {
     super();
-    this.items = items.map((it) =>
-      typeof it === "string" ? new ExprText(it) : it
-    );
+    if (items instanceof ExprElement) {
+      this.items = items.items;
+    } else {
+      this.items = items.map((it) =>
+        typeof it === "string" ? new ExprText(it) : it
+      );
+    }
   }
   toSql(): string {
     return "(" + this.items.map((it) => it.toSql()).join(" ") + ")";
@@ -60,82 +64,63 @@ export class OrderByItem {
 }
 
 export class SqlExpressions {
-  sum(item: ExprNode) {
-    return new ExprElement(["sum (", item, ")"]);
+  and(params: any[]) {
+    return params.flatMap((it) => [it, " and "]).slice(0, -1);
   }
 
-  and(items: ExprNode[]) {
-    // const exprNodes: ExprNode[] = [];
-    // let first = true;
-    // for (const item of items) {
-    //   if (!first) {
-    //     exprNodes.push(" and ");
-    //   }
-    //   exprNodes.push(item);
-    //   first = false;
-    // }
-    // return new ExprElement(exprNodes);
-    return new ExprElement(items.flatMap((it) => [it, " and "]).splice(0, -1));
+  or(params: any[]) {
+    return params.flatMap((it) => [it, " or "]).slice(0, -1);
   }
 
-  or(items: ExprNode[]) {
-    return new ExprElement(items.flatMap((it) => [it, " or "]).splice(0, -1));
+  not(params: any[]) {
+    return [" not (", params[0], ")"];
   }
 
-  not(items: ExprNode[]) {
-    return new ExprElement([" not (", items[0], ")"]);
+  contains(params: any[]) {
+    return [params[0], " ILIKE '%' || ", params[1], " || '%' "];
   }
 
-  contains(items: ExprNode[]) {
-    return new ExprElement([items[0], " ILIKE '%' || ", items[1], " || '%' "]);
+  rowsCount(params: any[]) {
+    return ["count(", params[0], ")::int"];
   }
 
-  rowsCount(items: ExprNode[]) {
-    return new ExprElement(["count(", items[0], ")::int"]);
+  equal(params: any[]) {
+    return [params[0], " = ", params[1]];
   }
 
-  equal(items: ExprNode[]) {
-    return new ExprElement([items[0], " = ", items[1]]);
+  notEqual(params: any[]) {
+    return [params[0], " <> ", params[1]];
   }
 
-  notEqual(items: ExprNode[]) {
-    return new ExprElement([items[0], " <> ", items[1]]);
+  greaterThan(params: any[]) {
+    return [params[0], " > ", params[1]];
   }
 
-  greaterThan(items: ExprNode[]) {
-    return new ExprElement([items[0], " > ", items[1]]);
+  greaterThanOrEqual(params: any[]) {
+    return [params[0], " >= ", params[1]];
   }
 
-  greaterThanOrEqual(items: ExprNode[]) {
-    return new ExprElement([items[0], " >= ", items[1]]);
+  lessThan(params: any[]) {
+    return [params[0], " < ", params[1]];
   }
 
-  lessThan(items: ExprNode[]) {
-    return new ExprElement([items[0], " < ", items[1]]);
+  lessThanOrEqual(params: any[]) {
+    return [params[0], " <= ", params[1]];
   }
 
-  lessThanOrEqual(items: ExprNode[]) {
-    return new ExprElement([items[0], " <= ", items[1]]);
+  startsWith(params: any[]) {
+    return [params[0], " ILIKE ", params[1], " || '%'"];
   }
 
-  startsWith(items: ExprNode[]) {
-    return new ExprElement([items[0], " ILIKE ", items[1], " || '%'"]);
+  endsWith(params: any[]) {
+    return [params[0], " ILIKE '%' || ", params[1]];
   }
 
-  endsWith(items: ExprNode[]) {
-    return new ExprElement([items[0], " ILIKE '%' || ", items[1]]);
+  notContains(params: any[]) {
+    return [params[0], " NOT ILIKE '%' || ", params[1], " || '%'"];
   }
 
-  notContains(items: ExprNode[]) {
-    return new ExprElement([
-      items[0],
-      " NOT ILIKE '%' || ",
-      items[1],
-      " || '%'",
-    ]);
-  }
-
-  in(items: ExprNode[]) {
-    return new ExprElement([items[0], " = ANY(", items[1], ")"]);
+  in(params: any[]) {
+    return [params[0], " = ANY(", params[1], ")"];
   }
 }
