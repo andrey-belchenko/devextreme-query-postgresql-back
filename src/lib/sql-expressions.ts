@@ -2,11 +2,11 @@ export abstract class ExprNode {
   abstract toSql(): string;
 }
 
-export class ExprElement extends ExprNode {
+export class Expr extends ExprNode {
   items: ExprNode[];
-  constructor(items: (ExprNode | string)[] | ExprElement) {
+  constructor(items: (ExprNode | string)[] | Expr) {
     super();
-    if (items instanceof ExprElement) {
+    if (items instanceof Expr) {
       this.items = items.items;
     } else {
       this.items = items.map((it) =>
@@ -61,25 +61,5 @@ export class OrderByItem {
   toSql(): string {
     return this.expr.toSql() + (this.isDesc ? " desc" : "");
   }
-}
-
-export interface SqlExpressions {
-  and(params: any[]): any[];
-  or(params: any[]): any[];
-  not(params: any[]): any[];
-
-  contains(params: any[]): any[];
-  equal(params: any[]): any[];
-  notEqual(params: any[]): any[];
-  greaterThan(params: any[]): any[];
-  greaterThanOrEqual(params: any[]): any[];
-  lessThan(params: any[]): any[];
-  lessThanOrEqual(params: any[]): any[];
-  startsWith(params: any[]): any[];
-  endsWith(params: any[]): any[];
-  notContains(params: any[]): any[];
-  in(params: any[]): any[];
-
-  count(params: any[]): any[];
 }
 

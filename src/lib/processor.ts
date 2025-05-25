@@ -2,14 +2,14 @@ import { LoadOptions } from "./load-options";
 import {
   ColumnDefinition,
   ColumnReference,
-  ExprElement,
+  Expr,
   ExprNode,
   ExprText,
   OrderByItem,
   QueryParam,
-  SqlExpressions,
 } from "./sql-expressions";
-import { SqlExpressionsPg } from "./sql-expressions-pg";
+import { ExprProviderPg } from "./expr-provider-pg";
+import { ExprProvider } from "./expr-provider";
 
 export interface ExecutorOptions {
   statement: SqlStatement;
@@ -36,7 +36,7 @@ interface SqlStatementProps {
   groupBy?: ExprNode[];
   offset?: number;
   limit?: number;
-  filter?: ExprElement;
+  filter?: Expr;
 }
 export class SqlStatement {
   params: QueryParam[];
@@ -45,7 +45,7 @@ export class SqlStatement {
   groupBy: ExprNode[];
   offset?: number;
   limit?: number;
-  filter?: ExprElement;
+  filter?: Expr;
 
   constructor(props: SqlStatementProps = {}) {
     this.params = props.params || [];
@@ -135,12 +135,12 @@ export interface ProcessorProps {
 export class Processor {
   loadOptions: LoadOptions;
   executor: (params: SqlStatement) => Promise<any[]>;
-  sqlExpressions: SqlExpressions;
+  sqlExpressions: ExprProvider;
 
   constructor(props: ProcessorProps) {
     this.executor = props.executor;
     this.loadOptions = props.loadOptions;
-    this.sqlExpressions = new SqlExpressionsPg();
+    this.sqlExpressions = new ExprProviderPg();
   }
 
   async execute(): Promise<ExecResult> {
@@ -281,7 +281,7 @@ export class Processor {
     const result = base.copy();
     if (this.loadOptions.filter) {
       const filter = this.normalizePredicate(this.loadOptions.filter);
-      result.filter = new ExprElement(this.convertPredicate(filter, result));
+      result.filter = new Expr(this.convertPredicate(filter, result));
     }
     return result;
   }
@@ -334,7 +334,7 @@ export class Processor {
     const result = base.copy();
     result.select = [
       new ColumnDefinition(
-        new ExprElement(this.sqlExpressions.count([new ExprText("*")])),
+        new Expr(this.sqlExpressions.count([new ExprText("*")])),
         columnNames.totalCount
       ),
     ];

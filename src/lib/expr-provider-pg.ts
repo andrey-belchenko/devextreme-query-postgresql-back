@@ -1,6 +1,6 @@
-import { SqlExpressions } from "./sql-expressions";
+import { ExprProvider } from "./expr-provider";
 
-export class SqlExpressionsPg implements SqlExpressions {
+export class ExprProviderPg implements ExprProvider {
   and(params: any[]) {
     return params.flatMap((it) => [it, " and "]).slice(0, -1);
   }
