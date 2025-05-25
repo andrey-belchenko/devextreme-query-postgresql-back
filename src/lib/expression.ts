@@ -10,7 +10,11 @@ export class Expr extends ExprNode {
       this.items = items.items;
     } else {
       this.items = items.map((it) =>
-        typeof it === "string" ? new ExprText(it) : it
+        typeof it === "string"
+          ? new ExprText(it)
+          : Array.isArray(it)
+          ? new Expr(it)
+          : it
       );
     }
   }

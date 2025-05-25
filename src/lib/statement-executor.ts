@@ -15,7 +15,7 @@ export interface BuildQueryParams {
 }
 
 export interface ExecResult {
-  data?: any[];
+  data: any[];
   totalCount?: number;
 }
 

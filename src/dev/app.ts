@@ -4,6 +4,7 @@ import { LoadOptions } from "../lib/load-options";
 import { execQuery } from "./mongo";
 import { ExprProviderPg } from "../lib/expr-provider-pg";
 import { LoadOptionsParser } from "../lib/load-options-parser";
+import { query } from "../lib";
 const { Pool } = require("pg");
 const cors = require("cors");
 const CONNECTION_STRING = "postgresql://admin:admin@localhost:5432/postgres";
@@ -19,7 +20,7 @@ app.use(express.json());
 
 app.post("/sales", async (req, res) => {
   console.log("PG");
-  const client = await pool.connect();
+  const pgClient = await pool.connect();
   try {
     // console.log(JSON.stringify(req.body));
     const loadOptions = req.body.loadOptions as LoadOptions;
@@ -46,24 +47,26 @@ app.post("/sales", async (req, res) => {
         p.product_id = s.product_id
     `;
 
-    const parser = new LoadOptionsParser({
-      exprProvider: new ExprProviderPg(),
-    });
+    const result = await query(pgClient, loadOptions, queryText);
 
-    const statements = parser.parse(loadOptions);
+    // const parser = new LoadOptionsParser({
+    //   exprProvider: new ExprProviderPg(),
+    // });
 
-    const executor = new StatementsExecutor({
-      handler: async (statement) => {
-        const query = statement.buildQuery({
-          sourceQuery: { queryText: queryText },
-        });
-        console.log(query.queryText);
-        const { rows } = await client.query(query.queryText, query.paramValues);
-        return rows;
-      },
-    });
+    // const statements = parser.parse(loadOptions);
 
-    const result = await executor.execute(statements);
+    // const executor = new StatementsExecutor({
+    //   handler: async (statement) => {
+    //     const query = statement.buildQuery({
+    //       sourceQuery: { queryText: queryText },
+    //     });
+    //     console.log(query.queryText);
+    //     const { rows } = await client.query(query.queryText, query.paramValues);
+    //     return rows;
+    //   },
+    // });
+
+    // const result = await executor.execute(statements);
 
     // const processor = new Processor({
     //   loadOptions,
@@ -78,7 +81,7 @@ app.post("/sales", async (req, res) => {
     // });
 
     // const result = await processor.execute();
-    console.log(`COUNT: ${result?.data?.length} TOTAL: ${result.totalCount}`);
+    console.log(`COUNT: ${result.data.length} TOTAL: ${result.totalCount}`);
     console.log("PG RESULT:");
     // console.log(JSON.stringify(result, null, 2));
     res.json(result);
@@ -89,7 +92,7 @@ app.post("/sales", async (req, res) => {
       error: "Internal server error",
     });
   } finally {
-    client.release();
+    pgClient.release();
   }
 });
 
