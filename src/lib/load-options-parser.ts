@@ -1,123 +1,10 @@
-import { LoadOptions } from "./load-options";
-import {
-  ColumnDefinition,
-  ColumnReference,
-  Expr,
-  ExprNode,
-  ExprText,
-  OrderByItem,
-  QueryParam,
-} from "./sql-expressions";
-import { ExprProviderPg } from "./expr-provider-pg";
 import { ExprProvider } from "./expr-provider";
+import { ColumnDefinition, ColumnReference, Expr, ExprText, OrderByItem, QueryParam } from "./expression";
+import { LoadOptions } from "./load-options";
+import { Statement } from "./statement";
 
-export interface ExecutorOptions {
-  statement: SqlStatement;
-}
 
-export interface SqlQuery {
-  queryText: string;
-  paramValues?: any[];
-}
-
-export interface BuildQueryParams {
-  sourceQuery: SqlQuery;
-}
-
-export interface ExecResult {
-  data?: any[];
-  totalCount?: number;
-}
-
-interface SqlStatementProps {
-  params?: QueryParam[];
-  select?: ColumnDefinition[];
-  orderBy?: OrderByItem[];
-  groupBy?: ExprNode[];
-  offset?: number;
-  limit?: number;
-  filter?: Expr;
-}
-export class SqlStatement {
-  params: QueryParam[];
-  select: ColumnDefinition[];
-  orderBy: OrderByItem[];
-  groupBy: ExprNode[];
-  offset?: number;
-  limit?: number;
-  filter?: Expr;
-
-  constructor(props: SqlStatementProps = {}) {
-    this.params = props.params || [];
-    this.select = props.select || [];
-    this.orderBy = props.orderBy || [];
-    this.groupBy = props.groupBy || [];
-    this.offset = props.offset;
-    this.limit = props.limit;
-    this.filter = props.filter;
-  }
-
-  buildQuery(params: BuildQueryParams): SqlQuery {
-    const sourceQuery = params.sourceQuery;
-    const paramValues = [...(sourceQuery.paramValues || [])];
-
-    let paramIndex = paramValues.length;
-
-    for (const param of this.params) {
-      paramIndex++;
-      param.index = paramIndex;
-      paramValues.push(param.value);
-    }
-
-    const srcAlias = "src";
-    const sqlTextItems = [`with ${srcAlias} as (\n${sourceQuery.queryText}\n)`];
-    const selectExpr = this.select?.length
-      ? this.select.map((it) => it.toSql()).join(",\n")
-      : " * ";
-    sqlTextItems.push(`select ${selectExpr}`);
-    sqlTextItems.push(`from ${srcAlias}`);
-
-    if (this.filter) {
-      sqlTextItems.push(`where ${this.filter.toSql()}`);
-    }
-
-    if (this.groupBy?.length) {
-      sqlTextItems.push(
-        `group by ${this.groupBy.map((it) => it.toSql()).join(", ")}`
-      );
-    }
-
-    if (this.orderBy?.length) {
-      sqlTextItems.push(
-        `order by ${this.orderBy.map((it) => it.toSql()).join(", ")}`
-      );
-    }
-
-    if (this.offset !== undefined) {
-      sqlTextItems.push(`offset ${this.offset}`);
-    }
-    if (this.limit !== undefined) {
-      sqlTextItems.push(`limit ${this.limit}`);
-    }
-
-    return {
-      queryText: sqlTextItems.join("\n"),
-      paramValues,
-    };
-  }
-
-  copy() {
-    return new SqlStatement({
-      ...this,
-      params: [...this.params],
-      select: [...this.select],
-      orderBy: [...this.orderBy],
-      groupBy: [...this.groupBy],
-    });
-  }
-}
-
-const columnNames = {
+export const columnNames = {
   totalCount: "total_count",
   key: "key",
 };
@@ -127,33 +14,36 @@ interface LoadOptionsPredicate {
   items: any[];
 }
 
-export interface ProcessorProps {
-  loadOptions: LoadOptions;
-  executor: (params: SqlStatement) => Promise<any[]>;
+
+export interface Statements {
+  data: Statement;
+  total?: Statement;
 }
 
-export class Processor {
-  loadOptions: LoadOptions;
-  executor: (params: SqlStatement) => Promise<any[]>;
-  sqlExpressions: ExprProvider;
+export interface LoadOptionsParserProps {
+  exprProvider: ExprProvider;
+}
 
-  constructor(props: ProcessorProps) {
-    this.executor = props.executor;
-    this.loadOptions = props.loadOptions;
-    this.sqlExpressions = new ExprProviderPg();
+export class LoadOptionsParser {
+  private loadOptions: LoadOptions = undefined as any;
+  exprProvider: ExprProvider;
+
+  constructor(props: LoadOptionsParserProps) {
+    this.exprProvider = props.exprProvider;
   }
 
-  async execute(): Promise<ExecResult> {
-    const initialStatement = new SqlStatement();
+  parse(loadOptions: LoadOptions): Statements {
+    this.loadOptions = loadOptions;
+    const initialStatement = new Statement();
     const filteredStatement = this.createFilteredStatement(initialStatement);
     const groupedStatement = this.createGroupStatement(filteredStatement);
     const sortedStatement = this.createSortedStatement(groupedStatement);
     const limitedStatement = this.createLimitedStatement(sortedStatement);
     const totalStatement = this.createTotalStatement(filteredStatement);
-    let result = {} as ExecResult;
-    result = await this.queryData(result, limitedStatement);
-    result = await this.queryTotalCount(result, totalStatement);
-    return result;
+    return {
+      data: limitedStatement,
+      total: totalStatement,
+    };
   }
 
   private normalizePredicate(rawPredicate: any[] | any): LoadOptionsPredicate {
@@ -214,9 +104,9 @@ export class Processor {
 
   private convertPredicate(
     predicate: LoadOptionsPredicate,
-    statement: SqlStatement
+    statement: Statement
   ): any[] {
-    const sqlExpr = this.sqlExpressions;
+    const sqlExpr = this.exprProvider;
     let func: (params: any[]) => any[] = undefined as any;
     switch (predicate.operator) {
       case "and":
@@ -277,7 +167,7 @@ export class Processor {
     }
   }
 
-  private createFilteredStatement(base: SqlStatement): SqlStatement {
+  private createFilteredStatement(base: Statement): Statement {
     const result = base.copy();
     if (this.loadOptions.filter) {
       const filter = this.normalizePredicate(this.loadOptions.filter);
@@ -286,7 +176,7 @@ export class Processor {
     return result;
   }
 
-  private createSortedStatement(base: SqlStatement): SqlStatement {
+  private createSortedStatement(base: Statement): Statement {
     const result = base.copy();
     if (!this.loadOptions.sort) return result;
     const sortOptions = Array.isArray(this.loadOptions.sort)
@@ -305,14 +195,14 @@ export class Processor {
     return result;
   }
 
-  private createLimitedStatement(base: SqlStatement): SqlStatement {
+  private createLimitedStatement(base: Statement): Statement {
     const result = base.copy();
     result.offset = this.loadOptions.skip;
     result.limit = this.loadOptions.take;
     return result;
   }
 
-  private createGroupStatement(base: SqlStatement): SqlStatement {
+  private createGroupStatement(base: Statement): Statement {
     const result = base.copy();
     if (!this.loadOptions.group) return result;
     const groupOptions = Array.isArray(this.loadOptions.group)
@@ -329,32 +219,15 @@ export class Processor {
     return result;
   }
 
-  private createTotalStatement(base: SqlStatement): SqlStatement | undefined {
+  private createTotalStatement(base: Statement): Statement | undefined {
     if (!this.loadOptions.requireTotalCount) return;
     const result = base.copy();
     result.select = [
       new ColumnDefinition(
-        new Expr(this.sqlExpressions.count([new ExprText("*")])),
+        new Expr(this.exprProvider.count([new ExprText("*")])),
         columnNames.totalCount
       ),
     ];
     return result;
-  }
-
-  private async queryData(
-    result: ExecResult,
-    statement: SqlStatement
-  ): Promise<ExecResult> {
-    const rows: any[] = await this.executor(statement);
-    return { ...result, data: rows };
-  }
-
-  private async queryTotalCount(
-    result: ExecResult,
-    statement: SqlStatement | undefined
-  ): Promise<ExecResult> {
-    if (!statement) return { ...result };
-    const rows: any[] = await this.executor(statement);
-    return { ...result, totalCount: rows[0][columnNames.totalCount] };
   }
 }

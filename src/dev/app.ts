@@ -1,7 +1,9 @@
 import express, { Express, Request, Response, Router } from "express";
-import { Processor } from "../lib/processor";
+import { StatementsExecutor } from "../lib/statement-executor";
 import { LoadOptions } from "../lib/load-options";
 import { execQuery } from "./mongo";
+import { ExprProviderPg } from "../lib/expr-provider-pg";
+import { LoadOptionsParser } from "../lib/load-options-parser";
 const { Pool } = require("pg");
 const cors = require("cors");
 const CONNECTION_STRING = "postgresql://admin:admin@localhost:5432/postgres";
@@ -44,9 +46,14 @@ app.post("/sales", async (req, res) => {
         p.product_id = s.product_id
     `;
 
-    const processor = new Processor({
-      loadOptions,
-      executor: async (statement) => {
+    const parser = new LoadOptionsParser({
+      exprProvider: new ExprProviderPg(),
+    });
+
+    const statements = parser.parse(loadOptions);
+
+    const executor = new StatementsExecutor({
+      handler: async (statement) => {
         const query = statement.buildQuery({
           sourceQuery: { queryText: queryText },
         });
@@ -56,7 +63,21 @@ app.post("/sales", async (req, res) => {
       },
     });
 
-    const result = await processor.execute();
+    const result = await executor.execute(statements);
+
+    // const processor = new Processor({
+    //   loadOptions,
+    //   executor: async (statement) => {
+    //     const query = statement.buildQuery({
+    //       sourceQuery: { queryText: queryText },
+    //     });
+    //     console.log(query.queryText);
+    //     const { rows } = await client.query(query.queryText, query.paramValues);
+    //     return rows;
+    //   },
+    // });
+
+    // const result = await processor.execute();
     console.log(`COUNT: ${result?.data?.length} TOTAL: ${result.totalCount}`);
     console.log("PG RESULT:");
     // console.log(JSON.stringify(result, null, 2));

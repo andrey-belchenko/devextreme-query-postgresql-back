@@ -62,4 +62,3 @@ export class OrderByItem {
     return this.expr.toSql() + (this.isDesc ? " desc" : "");
   }
 }
-
