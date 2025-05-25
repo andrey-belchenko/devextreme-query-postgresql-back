@@ -2,19 +2,20 @@ export abstract class ExprNode {
   abstract toSql(): string;
 }
 
-
 export class ExprElement extends ExprNode {
   items: ExprNode[];
-  constructor(items: ExprNode[]) {
+  constructor(items: (ExprNode | string)[]) {
     super();
-    this.items = items;
+    this.items = items.map((it) =>
+      typeof it === "string" ? new ExprText(it) : it
+    );
   }
   toSql(): string {
     return "(" + this.items.map((it) => it.toSql()).join(" ") + ")";
   }
 }
 
-class ExprText extends ExprNode {
+export class ExprText extends ExprNode {
   text: string;
   constructor(text: string) {
     super();
@@ -59,114 +60,82 @@ export class OrderByItem {
 }
 
 export class SqlExpressions {
-  
   sum(item: ExprNode) {
-    return new ExprElement([new ExprText("sum ("), item, new ExprText(")")]);
+    return new ExprElement(["sum (", item, ")"]);
   }
 
   and(items: ExprNode[]) {
-    const exprNodes: ExprNode[] = [];
-    let first = true;
-    for (const item of items) {
-      if (!first) {
-        exprNodes.push(new ExprText(" and "));
-      }
-      exprNodes.push(item);
-      first = false;
-    }
-    return new ExprElement(exprNodes);
+    // const exprNodes: ExprNode[] = [];
+    // let first = true;
+    // for (const item of items) {
+    //   if (!first) {
+    //     exprNodes.push(" and ");
+    //   }
+    //   exprNodes.push(item);
+    //   first = false;
+    // }
+    // return new ExprElement(exprNodes);
+    return new ExprElement(items.flatMap((it) => [it, " and "]).splice(0, -1));
   }
 
   or(items: ExprNode[]) {
-    const exprNodes: ExprNode[] = [];
-    let first = true;
-    for (const item of items) {
-      if (!first) {
-        exprNodes.push(new ExprText(" or "));
-      }
-      exprNodes.push(item);
-      first = false;
-    }
-    return new ExprElement(exprNodes);
+    return new ExprElement(items.flatMap((it) => [it, " or "]).splice(0, -1));
   }
 
   not(items: ExprNode[]) {
-    return new ExprElement([
-      new ExprText(" not ("),
-      items[0],
-      new ExprText(")"),
-    ]);
+    return new ExprElement([" not (", items[0], ")"]);
   }
 
   contains(items: ExprNode[]) {
-    return new ExprElement([
-      items[0],
-      new ExprText(" ILIKE '%' || "),
-      items[1],
-      new ExprText(" || '%' "),
-    ]);
+    return new ExprElement([items[0], " ILIKE '%' || ", items[1], " || '%' "]);
   }
 
-  rowsCount() {
-    return new ExprText("count(*)::int");
+  rowsCount(items: ExprNode[]) {
+    return new ExprElement(["count(", items[0], ")::int"]);
   }
 
   equal(items: ExprNode[]) {
-    return new ExprElement([items[0], new ExprText(" = "), items[1]]);
+    return new ExprElement([items[0], " = ", items[1]]);
   }
 
   notEqual(items: ExprNode[]) {
-    return new ExprElement([items[0], new ExprText(" <> "), items[1]]);
+    return new ExprElement([items[0], " <> ", items[1]]);
   }
 
   greaterThan(items: ExprNode[]) {
-    return new ExprElement([items[0], new ExprText(" > "), items[1]]);
+    return new ExprElement([items[0], " > ", items[1]]);
   }
 
   greaterThanOrEqual(items: ExprNode[]) {
-    return new ExprElement([items[0], new ExprText(" >= "), items[1]]);
+    return new ExprElement([items[0], " >= ", items[1]]);
   }
 
   lessThan(items: ExprNode[]) {
-    return new ExprElement([items[0], new ExprText(" < "), items[1]]);
+    return new ExprElement([items[0], " < ", items[1]]);
   }
 
   lessThanOrEqual(items: ExprNode[]) {
-    return new ExprElement([items[0], new ExprText(" <= "), items[1]]);
+    return new ExprElement([items[0], " <= ", items[1]]);
   }
 
   startsWith(items: ExprNode[]) {
-    return new ExprElement([
-      items[0],
-      new ExprText(" ILIKE "),
-      items[1],
-      new ExprText(" || '%'"),
-    ]);
+    return new ExprElement([items[0], " ILIKE ", items[1], " || '%'"]);
   }
 
   endsWith(items: ExprNode[]) {
-    return new ExprElement([
-      items[0],
-      new ExprText(" ILIKE '%' || "),
-      items[1],
-    ]);
+    return new ExprElement([items[0], " ILIKE '%' || ", items[1]]);
   }
 
   notContains(items: ExprNode[]) {
     return new ExprElement([
       items[0],
-      new ExprText(" NOT ILIKE '%' || "),
+      " NOT ILIKE '%' || ",
       items[1],
-      new ExprText(" || '%'"),
+      " || '%'",
     ]);
   }
 
   in(items: ExprNode[]) {
-    return new ExprElement([
-      items[0],
-      new ExprText(" = ANY("),
-      items[1],
-      new ExprText(")"),
-    ]);
+    return new ExprElement([items[0], " = ANY(", items[1], ")"]);
   }
 }

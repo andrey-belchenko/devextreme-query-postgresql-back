@@ -5,6 +5,7 @@ import {
   ColumnReference,
   ExprElement,
   ExprNode,
+  ExprText,
   OrderByItem,
   QueryParam,
   SqlExpressions,
@@ -121,71 +122,14 @@ const columnNames = {
   key: "key",
 };
 
-export interface ProcessorProps {
-  loadOptions: LoadOptions;
-  executor: (params: SqlStatement) => Promise<any[]>;
-}
-
 interface LoadOptionsPredicate {
   operator: string;
   items: any[];
 }
 
-function normalizePredicate(rawPredicate: any[] | any): LoadOptionsPredicate {
-  if (!Array.isArray(rawPredicate)) {
-    return rawPredicate;
-  }
-  let first = rawPredicate[0];
-  let second = rawPredicate[1];
-
-  if (Array.isArray(first) && !second) {
-    return normalizePredicate(first);
-  }
-
-  let operator: string = "";
-  let rawItems = [];
-  if (first === "!") {
-    operator = "!";
-    rawItems.push(second);
-  } else {
-    operator = second;
-    let skip = false;
-    for (let item of rawPredicate) {
-      if (!skip) {
-        rawItems.push(item);
-      }
-      skip = !skip;
-    }
-  }
-
-  if (operator == "or") {
-    let isInPredicate = true;
-    const values = [];
-    let prevColumn: string = undefined as any;
-    for (const item of rawItems) {
-      if (Array.isArray(item)) {
-        const column = item[0];
-        prevColumn = prevColumn || column;
-        if (item[1] === "=" && prevColumn === column) {
-          values.push(item[2]);
-        } else {
-          isInPredicate = false;
-          break;
-        }
-      }
-    }
-    if (isInPredicate && values.length > 1) {
-      return {
-        operator: "in",
-        items: [prevColumn, values],
-      };
-    }
-  }
-
-  return {
-    operator,
-    items: rawItems.map((it: any) => normalizePredicate(it)),
-  };
+export interface ProcessorProps {
+  loadOptions: LoadOptions;
+  executor: (params: SqlStatement) => Promise<any[]>;
 }
 
 export class Processor {
@@ -200,16 +144,72 @@ export class Processor {
   }
 
   async execute(): Promise<ExecResult> {
-    const initial = new SqlStatement();
-    const filtered = this.createFilteredStatement(initial);
-    const grouped = this.createGroupStatement(filtered);
-    const sorted = this.createSortedStatement(grouped);
-    const limited = this.createLimitedStatement(sorted);
-    const totalStatement = this.createTotalStatement(filtered);
+    const initialStatement = new SqlStatement();
+    const filteredStatement = this.createFilteredStatement(initialStatement);
+    const groupedStatement = this.createGroupStatement(filteredStatement);
+    const sortedStatement = this.createSortedStatement(groupedStatement);
+    const limitedStatement = this.createLimitedStatement(sortedStatement);
+    const totalStatement = this.createTotalStatement(filteredStatement);
     let result = {} as ExecResult;
-    result = await this.queryData(result, limited);
+    result = await this.queryData(result, limitedStatement);
     result = await this.queryTotalCount(result, totalStatement);
     return result;
+  }
+
+  private normalizePredicate(rawPredicate: any[] | any): LoadOptionsPredicate {
+    if (!Array.isArray(rawPredicate)) {
+      return rawPredicate;
+    }
+    let first = rawPredicate[0];
+    let second = rawPredicate[1];
+
+    if (Array.isArray(first) && !second) {
+      return this.normalizePredicate(first);
+    }
+
+    let operator: string = "";
+    let rawItems = [];
+    if (first === "!") {
+      operator = "!";
+      rawItems.push(second);
+    } else {
+      operator = second;
+      let skip = false;
+      for (let item of rawPredicate) {
+        if (!skip) {
+          rawItems.push(item);
+        }
+        skip = !skip;
+      }
+    }
+
+    if (operator == "or") {
+      let isInPredicate = true;
+      const values = [];
+      let prevColumn: string = undefined as any;
+      for (const item of rawItems) {
+        if (Array.isArray(item)) {
+          const column = item[0];
+          prevColumn = prevColumn || column;
+          if (item[1] === "=" && prevColumn === column) {
+            values.push(item[2]);
+          } else {
+            isInPredicate = false;
+            break;
+          }
+        }
+      }
+      if (isInPredicate && values.length > 1) {
+        return {
+          operator: "in",
+          items: [prevColumn, values],
+        };
+      }
+    }
+    return {
+      operator,
+      items: rawItems.map((it: any) => this.normalizePredicate(it)),
+    };
   }
 
   private convertPredicate(
@@ -280,7 +280,7 @@ export class Processor {
   private createFilteredStatement(base: SqlStatement): SqlStatement {
     const result = base.copy();
     if (this.loadOptions.filter) {
-      const filter = normalizePredicate(this.loadOptions.filter);
+      const filter = this.normalizePredicate(this.loadOptions.filter);
       result.filter = this.convertPredicate(filter, result);
     }
     return result;
@@ -334,7 +334,7 @@ export class Processor {
     const result = base.copy();
     result.select = [
       new ColumnDefinition(
-        this.sqlExpressions.rowsCount(),
+        this.sqlExpressions.rowsCount([new ExprText("*")]),
         columnNames.totalCount
       ),
     ];
