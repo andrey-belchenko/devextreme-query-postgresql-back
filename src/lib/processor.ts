@@ -9,6 +9,7 @@ import {
   OrderByItem,
   QueryParam,
   SqlExpressions,
+  SqlExpressionsPg,
 } from "./sql-expressions";
 
 export interface ExecutorOptions {
@@ -140,7 +141,7 @@ export class Processor {
   constructor(props: ProcessorProps) {
     this.executor = props.executor;
     this.loadOptions = props.loadOptions;
-    this.sqlExpressions = new SqlExpressions();
+    this.sqlExpressions = new SqlExpressionsPg();
   }
 
   async execute(): Promise<ExecResult> {
@@ -334,7 +335,7 @@ export class Processor {
     const result = base.copy();
     result.select = [
       new ColumnDefinition(
-        new ExprElement(this.sqlExpressions.rowsCount([new ExprText("*")])),
+        new ExprElement(this.sqlExpressions.count([new ExprText("*")])),
         columnNames.totalCount
       ),
     ];

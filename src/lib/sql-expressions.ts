@@ -63,7 +63,27 @@ export class OrderByItem {
   }
 }
 
-export class SqlExpressions {
+export interface SqlExpressions {
+  and(params: any[]): any[];
+  or(params: any[]): any[];
+  not(params: any[]): any[];
+
+  contains(params: any[]): any[];
+  equal(params: any[]): any[];
+  notEqual(params: any[]): any[];
+  greaterThan(params: any[]): any[];
+  greaterThanOrEqual(params: any[]): any[];
+  lessThan(params: any[]): any[];
+  lessThanOrEqual(params: any[]): any[];
+  startsWith(params: any[]): any[];
+  endsWith(params: any[]): any[];
+  notContains(params: any[]): any[];
+  in(params: any[]): any[];
+
+  count(params: any[]): any[];
+}
+
+export class SqlExpressionsPg implements SqlExpressions {
   and(params: any[]) {
     return params.flatMap((it) => [it, " and "]).slice(0, -1);
   }
@@ -78,10 +98,6 @@ export class SqlExpressions {
 
   contains(params: any[]) {
     return [params[0], " ILIKE '%' || ", params[1], " || '%' "];
-  }
-
-  rowsCount(params: any[]) {
-    return ["count(", params[0], ")::int"];
   }
 
   equal(params: any[]) {
@@ -122,5 +138,9 @@ export class SqlExpressions {
 
   in(params: any[]) {
     return [params[0], " = ANY(", params[1], ")"];
+  }
+
+  count(params: any[]) {
+    return ["count(", params[0], ")::int"];
   }
 }
