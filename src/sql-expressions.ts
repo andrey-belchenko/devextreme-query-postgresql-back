@@ -2,6 +2,7 @@ export abstract class ExprNode {
   abstract toSql(): string;
 }
 
+
 export class ExprElement extends ExprNode {
   items: ExprNode[];
   constructor(items: ExprNode[]) {
