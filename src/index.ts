@@ -50,7 +50,7 @@ app.post("/sales", async (req, res) => {
         const query = statement.buildQuery({
           sourceQuery: { queryText: queryText },
         });
-        // console.log(query.queryText);
+        console.log(query.queryText);
         const { rows } = await client.query(query.queryText, query.paramValues);
         return rows;
       },
@@ -59,7 +59,7 @@ app.post("/sales", async (req, res) => {
     const result = await processor.execute();
     console.log(`COUNT: ${result?.data?.length} TOTAL: ${result.totalCount}`);
     console.log("PG RESULT:");
-    console.log(JSON.stringify(result, null, 2));
+    // console.log(JSON.stringify(result, null, 2));
     res.json(result);
   } catch (error) {
     console.error("Error executing query:", error);
@@ -84,7 +84,7 @@ app.post("/mongo/sales", async (req, res) => {
   });
   // console.log(`COUNT: ${result?.data?.length} TOTAL: ${result.totalCount}`);
   console.log("MONGO RESULT:");
-  console.log(JSON.stringify(result, null, 2));
+  // console.log(JSON.stringify(result, null, 2));
   res.json(result);
 });
 

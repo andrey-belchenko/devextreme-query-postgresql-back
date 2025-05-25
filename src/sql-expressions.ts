@@ -34,20 +34,6 @@ export class QueryParam extends ExprNode {
   }
 }
 
-class TextQuery {
-  constructor(public text: string) {}
-}
-
-export type Query = TextQuery;
-
-class TableAlias {
-  constructor(public alias: string) {}
-}
-
-class ColumnAlias {
-  constructor(public alias: string) {}
-}
-
 export class ColumnReference extends ExprNode {
   constructor(public columnName: string) {
     super();
@@ -69,14 +55,6 @@ export class OrderByItem {
   toSql(): string {
     return this.expr.toSql() + (this.isDesc ? " desc" : "");
   }
-}
-
-class SourceDefinition {
-  constructor(public query: Query) {}
-}
-
-class SelectQuery {
-  constructor(public columns: ColumnDefinition[], public from: Query) {}
 }
 
 export class SqlExpressions {
@@ -105,19 +83,12 @@ export class SqlExpressions {
         exprNodes.push(new ExprText(" or "));
       }
       exprNodes.push(item);
+      first = false;
     }
     return new ExprElement(exprNodes);
   }
 
   not(items: ExprNode[]) {
-    const exprNodes: ExprNode[] = [];
-    let first = true;
-    for (const item of items) {
-      if (!first) {
-        exprNodes.push(new ExprText(" or "));
-      }
-      exprNodes.push(item);
-    }
     return new ExprElement([
       new ExprText(" not ("),
       items[0],
@@ -127,15 +98,73 @@ export class SqlExpressions {
 
   contains(items: ExprNode[]) {
     return new ExprElement([
-      new ExprText("upper("),
       items[0],
-      new ExprText(") like '%' || upper("),
+      new ExprText(" ILIKE '%' || "),
       items[1],
-      new ExprText(") || '%' "),
+      new ExprText(" || '%' "),
     ]);
   }
 
   rowsCount() {
     return new ExprText("count(*)::int");
+  }
+
+  equal(items: ExprNode[]) {
+    return new ExprElement([items[0], new ExprText(" = "), items[1]]);
+  }
+
+  notEqual(items: ExprNode[]) {
+    return new ExprElement([items[0], new ExprText(" <> "), items[1]]);
+  }
+
+  greaterThan(items: ExprNode[]) {
+    return new ExprElement([items[0], new ExprText(" > "), items[1]]);
+  }
+
+  greaterThanOrEqual(items: ExprNode[]) {
+    return new ExprElement([items[0], new ExprText(" >= "), items[1]]);
+  }
+
+  lessThan(items: ExprNode[]) {
+    return new ExprElement([items[0], new ExprText(" < "), items[1]]);
+  }
+
+  lessThanOrEqual(items: ExprNode[]) {
+    return new ExprElement([items[0], new ExprText(" <= "), items[1]]);
+  }
+
+  startsWith(items: ExprNode[]) {
+    return new ExprElement([
+      items[0],
+      new ExprText(" ILIKE "),
+      items[1],
+      new ExprText(" || '%'"),
+    ]);
+  }
+
+  endsWith(items: ExprNode[]) {
+    return new ExprElement([
+      items[0],
+      new ExprText(" ILIKE '%' || "),
+      items[1],
+    ]);
+  }
+
+  notContains(items: ExprNode[]) {
+    return new ExprElement([
+      items[0],
+      new ExprText(" NOT ILIKE '%' || "),
+      items[1],
+      new ExprText(" || '%'"),
+    ]);
+  }
+
+  in(items: ExprNode[]) {
+    return new ExprElement([
+      items[0],
+      new ExprText(" = ANY("),
+      items[1],
+      new ExprText(")"),
+    ]);
   }
 }

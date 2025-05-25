@@ -1,3 +1,4 @@
+import { an } from "@faker-js/faker/dist/airline-BUL6NtOJ";
 import { LoadOptions } from "./load-options";
 import {
   ColumnDefinition,
@@ -31,6 +32,7 @@ interface SqlStatementProps {
   params?: QueryParam[];
   select?: ColumnDefinition[];
   orderBy?: OrderByItem[];
+  groupBy?: ExprNode[];
   offset?: number;
   limit?: number;
   filter?: ExprElement;
@@ -39,6 +41,7 @@ export class SqlStatement {
   params: QueryParam[];
   select: ColumnDefinition[];
   orderBy: OrderByItem[];
+  groupBy: ExprNode[];
   offset?: number;
   limit?: number;
   filter?: ExprElement;
@@ -47,6 +50,7 @@ export class SqlStatement {
     this.params = props.params || [];
     this.select = props.select || [];
     this.orderBy = props.orderBy || [];
+    this.groupBy = props.groupBy || [];
     this.offset = props.offset;
     this.limit = props.limit;
     this.filter = props.filter;
@@ -76,6 +80,12 @@ export class SqlStatement {
       sqlTextItems.push(`where ${this.filter.toSql()}`);
     }
 
+    if (this.groupBy?.length) {
+      sqlTextItems.push(
+        `group by ${this.groupBy.map((it) => it.toSql()).join(", ")}`
+      );
+    }
+
     if (this.orderBy?.length) {
       sqlTextItems.push(
         `order by ${this.orderBy.map((it) => it.toSql()).join(", ")}`
@@ -101,12 +111,14 @@ export class SqlStatement {
       params: [...this.params],
       select: [...this.select],
       orderBy: [...this.orderBy],
+      groupBy: [...this.groupBy],
     });
   }
 }
 
 const columnNames = {
   totalCount: "total_count",
+  key: "key",
 };
 
 export interface ProcessorProps {
@@ -125,6 +137,11 @@ function normalizePredicate(rawPredicate: any[] | any): LoadOptionsPredicate {
   }
   let first = rawPredicate[0];
   let second = rawPredicate[1];
+
+  if (Array.isArray(first) && !second) {
+    return normalizePredicate(first);
+  }
+
   let operator: string = "";
   let rawItems = [];
   if (first === "!") {
@@ -140,6 +157,31 @@ function normalizePredicate(rawPredicate: any[] | any): LoadOptionsPredicate {
       skip = !skip;
     }
   }
+
+  if (operator == "or") {
+    let isInPredicate = true;
+    const values = [];
+    let prevColumn: string = undefined as any;
+    for (const item of rawItems) {
+      if (Array.isArray(item)) {
+        const column = item[0];
+        prevColumn = prevColumn || column;
+        if (item[1] === "=" && prevColumn === column) {
+          values.push(item[2]);
+        } else {
+          isInPredicate = false;
+          break;
+        }
+      }
+    }
+    if (isInPredicate && values.length > 1) {
+      return {
+        operator: "in",
+        items: [prevColumn, values],
+      };
+    }
+  }
+
   return {
     operator,
     items: rawItems.map((it: any) => normalizePredicate(it)),
@@ -160,7 +202,8 @@ export class Processor {
   async execute(): Promise<ExecResult> {
     const initial = new SqlStatement();
     const filtered = this.createFilteredStatement(initial);
-    const sorted = this.createSortedStatement(filtered);
+    const grouped = this.createGroupStatement(filtered);
+    const sorted = this.createSortedStatement(grouped);
     const limited = this.createLimitedStatement(sorted);
     const totalStatement = this.createTotalStatement(filtered);
     let result = {} as ExecResult;
@@ -174,7 +217,7 @@ export class Processor {
     statement: SqlStatement
   ): ExprElement {
     const sqlExpr = this.sqlExpressions;
-    let func: (any: ExprNode[]) => ExprElement = () => undefined as any;
+    let func: (any: ExprNode[]) => ExprElement = undefined as any;
     switch (predicate.operator) {
       case "and":
         func = sqlExpr.and;
@@ -185,8 +228,38 @@ export class Processor {
       case "!":
         func = sqlExpr.not;
         break;
+      case "=":
+        func = sqlExpr.equal;
+        break;
+      case "<>":
+        func = sqlExpr.notEqual;
+        break;
+      case ">":
+        func = sqlExpr.greaterThan;
+        break;
+      case ">=":
+        func = sqlExpr.greaterThanOrEqual;
+        break;
+      case "<":
+        func = sqlExpr.lessThan;
+        break;
+      case "<=":
+        func = sqlExpr.lessThanOrEqual;
+        break;
+      case "startswith":
+        func = sqlExpr.startsWith;
+        break;
+      case "endswith":
+        func = sqlExpr.endsWith;
+        break;
       case "contains":
         func = sqlExpr.contains;
+        break;
+      case "notcontains":
+        func = sqlExpr.notContains;
+        break;
+      case "in":
+        func = sqlExpr.in;
         break;
       default:
         throw Error(`Unknown operator '${predicate.operator}'`);
@@ -208,10 +281,7 @@ export class Processor {
     const result = base.copy();
     if (this.loadOptions.filter) {
       const filter = normalizePredicate(this.loadOptions.filter);
-      result.filter = this.convertPredicate(
-        filter,
-        result
-      );
+      result.filter = this.convertPredicate(filter, result);
     }
     return result;
   }
@@ -239,6 +309,23 @@ export class Processor {
     const result = base.copy();
     result.offset = this.loadOptions.skip;
     result.limit = this.loadOptions.take;
+    return result;
+  }
+
+  private createGroupStatement(base: SqlStatement): SqlStatement {
+    const result = base.copy();
+    if (!this.loadOptions.group) return result;
+    const groupOptions = Array.isArray(this.loadOptions.group)
+      ? this.loadOptions.group
+      : [this.loadOptions.group];
+
+    if (!groupOptions.length) return result;
+
+    for (let groupOption of groupOptions as any[]) {
+      const columnRef = new ColumnReference(groupOption.selector);
+      result.groupBy.push(columnRef);
+      result.select.push(new ColumnDefinition(columnRef, columnNames.key));
+    }
     return result;
   }
 
