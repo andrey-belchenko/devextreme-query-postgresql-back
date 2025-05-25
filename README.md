@@ -1,1 +1,1 @@
-# devextreme-query-postgresql-back
+# ie-dx-query-pg

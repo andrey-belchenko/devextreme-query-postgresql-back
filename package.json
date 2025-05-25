@@ -1,18 +1,30 @@
 {
-  "name": "devextreme-query-postgresql-back",
+  "name": "ie-dx-query-pg",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "main": "dist/lib/index.js",
+  "types": "dist/lib/index.d.ts",
+  "files": [
+    "dist/lib/**/*"
+  ],
   "scripts": {
-    "start": "node dist/index.js",
     "build": "tsc",
+    "prepare-publish": "node src/dev/scripts/prepare-publish.js",
+    "prepublishOnly": "npm run build",
     "dev": "nodemon src/dev/app.ts",
     "generate-sample-data": "node src/sample-data-generator/sales.js",
     "pg-to-mongo": "node src/sample-data-generator/pg-to-mongo.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Your Name",
+  "license": "MIT",
+  "description": "draft",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/ie-dx-query-pg.git"
+  },
+  "dependencies": {
+    "pg": "^8.16.0",
+    "pg-cursor": "^2.15.0"
+  },
   "devDependencies": {
     "@types/express": "^5.0.2",
     "@types/node": "^22.15.18",
@@ -24,9 +36,6 @@
     "cors": "^2.8.5",
     "devextreme-query-mongodb": "^2.0.16",
     "express": "^5.1.0",
-    "mongodb": "^6.16.0",
-    "pg": "^8.16.0",
-    "pg-cursor": "^2.15.0"
-  },
-  "dependencies": {}
+    "mongodb": "^6.16.0"
+  }
 }
