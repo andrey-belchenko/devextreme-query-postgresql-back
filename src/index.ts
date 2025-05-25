@@ -16,7 +16,7 @@ app.use(cors());
 app.use(express.json());
 
 app.post("/sales", async (req, res) => {
-   console.log("PG");
+  console.log("PG");
   const client = await pool.connect();
   try {
     console.log(JSON.stringify(req.body));
@@ -45,8 +45,12 @@ app.post("/sales", async (req, res) => {
     const processor = new Processor({
       queryText,
       loadOptions,
-      executor: async (opt) => {
-        const { rows } = await client.query(opt.queryText, opt.queryParams);
+      executor: async (statement) => {
+        const query = statement.buildQuery({
+          sourceQuery: { queryText: queryText },
+        });
+        console.log(query.queryText);
+        const { rows } = await client.query(query.queryText, query.paramValues);
         return rows;
       },
     });
@@ -73,7 +77,7 @@ app.post("/mongo/sales", async (req, res) => {
     loadOptions,
     collection: "sales",
   });
-   console.log(`COUNT: ${result?.data?.length} TOTAL: ${result.totalCount}`);
+  console.log(`COUNT: ${result?.data?.length} TOTAL: ${result.totalCount}`);
   res.json(result);
 });
 
