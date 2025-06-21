@@ -33,7 +33,6 @@ export async function query(
           paramValues: sourceQueryParamValues,
         },
       });
-      console.log(query.queryText);
       const { rows } = await pgClient.query(query.queryText, query.paramValues);
       return rows;
     },
