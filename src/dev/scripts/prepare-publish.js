@@ -17,7 +17,8 @@ const minimalPackageJson = {
   license: packageJson.license,
   description: packageJson.description,
   repository: packageJson.repository,
-  dependencies: packageJson.dependencies || {}
+  dependencies: packageJson.dependencies || {},
+  publishConfig: packageJson.publishConfig || {}
 };
 
 // Copy dist/lib contents to dist (move to package root)

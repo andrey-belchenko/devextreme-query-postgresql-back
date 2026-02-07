@@ -1,6 +1,6 @@
 {
-  "name": "ie-dx-query-pg",
-  "version": "1.0.1",
+  "name": "@infoenergo/ie-dx-query-pg",
+  "version": "1.1.0",
   "main": "dist/lib/index.js",
   "types": "dist/lib/index.d.ts",
   "files": [
@@ -10,6 +10,7 @@
     "build": "tsc",
     "prepare-publish": "node src/dev/scripts/prepare-publish.js",
     "prepublishOnly": "npm run build",
+    "publish": "ts-node src/dev/scripts/publish.ts",
     "dev": "nodemon src/dev/app.ts",
     "generate-sample-data": "node src/dev/sample-data-generator/sales.js",
     "generate-sample-data-oracle11g": "node src/dev/sample-data-generator/sales-oracle11g.js",
@@ -21,6 +22,9 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/your-username/ie-dx-query-pg.git"
+  },
+  "publishConfig": {
+    "@infoenergo:registry": "http://gitlab.infoenergo.loc/api/v4/projects/421/packages/npm/"
   },
   "devDependencies": {
     "@types/express": "^5.0.2",
