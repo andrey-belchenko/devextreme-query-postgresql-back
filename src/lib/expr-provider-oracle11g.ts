@@ -119,8 +119,9 @@ export class ExprProviderOracle11g implements ExprProvider {
     }
 
     // Full pagination with offset and limit
-    const minRow = offset;
-    const maxRow = minRow + limit;
+    // At this point, both offset and limit are guaranteed to be defined
+    const minRow = offset!;
+    const maxRow = minRow + limit!;
     const maxRowParam = this.parameterPlaceholder(startParamIndex + 1);
     const minRowParam = this.parameterPlaceholder(startParamIndex + 2);
     const wrappedQuery = `SELECT * FROM (\n  SELECT inner.*, ROWNUM rnum FROM (\n    ${queryText}\n  ) inner WHERE ROWNUM <= ${maxRowParam}\n) WHERE rnum > ${minRowParam}`;
