@@ -54,8 +54,9 @@ export class ExprProviderOracle11g implements ExprProvider {
   }
 
   in(params: any[]) {
-    // Oracle uses IN with a subquery or list
-    // For array parameters, we'll use IN with a list
+    // Oracle 11g: For array parameters, use TABLE function or direct IN
+    // Most Oracle drivers handle array parameters in IN clauses automatically
+    // Format: column IN (:param) where :param is an array bind variable
     return [params[0], " IN ", params[1]];
   }
 
@@ -84,17 +85,18 @@ export class ExprProviderOracle11g implements ExprProvider {
     //     -- original query here
     //   ) inner WHERE ROWNUM <= :maxRow
     // ) WHERE rnum > :minRow
+    //
+    // Note: startParamIndex is the next available parameter index (1-based)
+    // So if startParamIndex = 3, we use :4 and :5 for the ROWNUM parameters
 
     // Only wrap if we have pagination parameters
     if (offset === undefined && limit === undefined) {
       return null;
     }
 
-    const minRow = offset || 0;
-    const maxRow = minRow + (limit || 0);
-
     // If only limit is specified (no offset), use simpler pattern
     if (offset === undefined && limit !== undefined) {
+      // Use startParamIndex + 1 because startParamIndex is the last used index
       const maxRowParam = this.parameterPlaceholder(startParamIndex + 1);
       const wrappedQuery = `SELECT * FROM (\n  SELECT inner.*, ROWNUM rnum FROM (\n    ${queryText}\n  ) inner WHERE ROWNUM <= ${maxRowParam}\n)`;
       return {
@@ -112,11 +114,13 @@ export class ExprProviderOracle11g implements ExprProvider {
       const wrappedQuery = `SELECT * FROM (\n  SELECT inner.*, ROWNUM rnum FROM (\n    ${queryText}\n  ) inner WHERE ROWNUM <= ${maxRowParam}\n) WHERE rnum > ${minRowParam}`;
       return {
         queryText: wrappedQuery,
-        paramValues: [999999999, minRow],
+        paramValues: [999999999, offset],
       };
     }
 
     // Full pagination with offset and limit
+    const minRow = offset;
+    const maxRow = minRow + limit;
     const maxRowParam = this.parameterPlaceholder(startParamIndex + 1);
     const minRowParam = this.parameterPlaceholder(startParamIndex + 2);
     const wrappedQuery = `SELECT * FROM (\n  SELECT inner.*, ROWNUM rnum FROM (\n    ${queryText}\n  ) inner WHERE ROWNUM <= ${maxRowParam}\n) WHERE rnum > ${minRowParam}`;
