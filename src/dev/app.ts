@@ -109,7 +109,14 @@ app.post("/oracle/sales", async (req, res) => {
             query.paramValues || [],
             { outFormat: oracledb.OUT_FORMAT_OBJECT }
           );
-          return result.rows;
+          // Convert Oracle uppercase column names to lowercase to match PostgreSQL behavior
+          return result.rows.map((row: any) => {
+            const lowerCaseRow: any = {};
+            for (const key in row) {
+              lowerCaseRow[key.toLowerCase()] = row[key];
+            }
+            return lowerCaseRow;
+          });
         },
       });
       const result = await executor.execute(statements);
