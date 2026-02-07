@@ -92,11 +92,11 @@ try {
     console.log('Cleaning up...');
     
     // Remove node_modules
-    const nodeModulesPath = path.join(rootDir, 'node_modules');
-    if (fs.existsSync(nodeModulesPath)) {
-        fs.rmSync(nodeModulesPath, { recursive: true, force: true });
-        console.log('  - Removed node_modules');
-    }
+    // const nodeModulesPath = path.join(rootDir, 'node_modules');
+    // if (fs.existsSync(nodeModulesPath)) {
+    //     fs.rmSync(nodeModulesPath, { recursive: true, force: true });
+    //     console.log('  - Removed node_modules');
+    // }
 
     // Remove dist
     if (fs.existsSync(distDir)) {
@@ -105,11 +105,11 @@ try {
     }
 
     // Remove package-lock.json
-    const packageLockPath = path.join(rootDir, 'package-lock.json');
-    if (fs.existsSync(packageLockPath)) {
-        fs.unlinkSync(packageLockPath);
-        console.log('  - Removed package-lock.json');
-    }
+    // const packageLockPath = path.join(rootDir, 'package-lock.json');
+    // if (fs.existsSync(packageLockPath)) {
+    //     fs.unlinkSync(packageLockPath);
+    //     console.log('  - Removed package-lock.json');
+    // }
 
     // Cleanup: Remove auth token from npm config
     console.log('  - Removing auth token from npm config...');
