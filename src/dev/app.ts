@@ -7,7 +7,7 @@ import { LoadOptionsParser } from "../lib/load-options-parser";
 import { query } from "../lib";
 const { Pool } = require("pg");
 const cors = require("cors");
-const CONNECTION_STRING = "postgresql://admin:admin@localhost:5432/postgres";
+const CONNECTION_STRING = "postgresql://postgres:password@localhost:5432/postgres";
 
 const pool = new Pool({
   connectionString: CONNECTION_STRING,

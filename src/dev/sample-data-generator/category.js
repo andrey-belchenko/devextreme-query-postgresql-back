@@ -6,7 +6,7 @@ const TOTAL_CATEGORIES = 10000;
 const TOP_LEVEL_CATEGORIES = 100;
 const MAX_DEPTH = 3; // Maximum hierarchy depth
 const BATCH_SIZE = 1000; // Number of rows per batch insert
-const CONNECTION_STRING = "postgresql://admin:admin@localhost:5432/postgres";
+const CONNECTION_STRING = "postgresql://postgres:password@localhost:5432/postgres";
 
 // Database configuration using connection string
 const pool = new Pool({

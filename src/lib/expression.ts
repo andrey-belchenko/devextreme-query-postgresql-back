@@ -34,12 +34,23 @@ export class ExprText extends ExprNode {
   }
 }
 
+import { ExprProvider } from "./expr-provider";
+
 export class QueryParam extends ExprNode {
-  constructor(public value: any) {
+  private exprProvider?: ExprProvider;
+  constructor(public value: any, exprProvider?: ExprProvider) {
     super();
+    this.exprProvider = exprProvider;
   }
   index: number | undefined = undefined;
   toSql(): string {
+    if (this.index === undefined) {
+      throw new Error("QueryParam index must be set before calling toSql()");
+    }
+    if (this.exprProvider) {
+      return this.exprProvider.parameterPlaceholder(this.index);
+    }
+    // Fallback to PostgreSQL syntax for backward compatibility
     return `$${this.index}`;
   }
 }

@@ -21,8 +21,9 @@ export async function query(
   sourceQueryText: string,
   sourceQueryParamValues?: any[]
 ): Promise<ExecResult> {
+  const exprProvider = new ExprProviderPg();
   const parser = new LoadOptionsParser({
-    exprProvider: new ExprProviderPg(),
+    exprProvider: exprProvider,
   });
   const statements = parser.parse(loadOptions);
   const executor = new StatementsExecutor({
@@ -32,6 +33,7 @@ export async function query(
           queryText: sourceQueryText,
           paramValues: sourceQueryParamValues,
         },
+        exprProvider: exprProvider,
       });
       const { rows } = await pgClient.query(query.queryText, query.paramValues);
       return rows;

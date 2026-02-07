@@ -11,7 +11,7 @@
     "prepare-publish": "node src/dev/scripts/prepare-publish.js",
     "prepublishOnly": "npm run build",
     "dev": "nodemon src/dev/app.ts",
-    "generate-sample-data": "node src/sample-data-generator/sales.js",
+    "generate-sample-data": "node src/dev/sample-data-generator/sales.js",
     "pg-to-mongo": "node src/sample-data-generator/pg-to-mongo.js"
   },
   "author": "Your Name",

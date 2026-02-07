@@ -155,7 +155,7 @@ export class LoadOptionsParser {
         throw Error(`Unknown operator '${predicate.operator}'`);
     }
     if (!["and", "or", "!"].includes(predicate.operator)) {
-      const param = new QueryParam(predicate.items[1]);
+      const param = new QueryParam(predicate.items[1], this.exprProvider);
       statement.params.push(param);
       return func([new ColumnReference(predicate.items[0]), param]);
     } else {

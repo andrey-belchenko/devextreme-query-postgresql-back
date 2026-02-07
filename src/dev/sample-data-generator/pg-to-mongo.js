@@ -6,7 +6,7 @@ const Cursor = require('pg-cursor');
 async function transferDataFromPgToMongo({
   sqlText,
   targetCollectionName,
-  pgConnectionString = 'postgresql://admin:admin@localhost:5432/postgres',
+  pgConnectionString = 'postgresql://postgres:password@localhost:5432/postgres',
   mongoConnectionString = 'mongodb://localhost:27017',
   mongoDbName = 'reports_tmp', // Default database name
   batchSize = 1000 // Number of documents to insert at once

@@ -1,6 +1,6 @@
 const { Pool } = require("pg");
 const { faker } = require("@faker-js/faker");
-const CONNECTION_STRING = "postgresql://admin:admin@localhost:5432/postgres";
+const CONNECTION_STRING = "postgresql://postgres:password@localhost:5432/postgres";
 
 // Configuration - all counts defined at the top
 const COUNTS = {

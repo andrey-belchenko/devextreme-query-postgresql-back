@@ -60,4 +60,22 @@ export class ExprProviderPg implements ExprProvider {
   count(params: any[]) {
     return ["count(", params[0], ")::int"];
   }
+
+  limitOffset(offset?: number, limit?: number): string[] {
+    const parts: string[] = [];
+    if (offset !== undefined) {
+      parts.push("offset ", offset.toString());
+    }
+    if (limit !== undefined) {
+      if (parts.length > 0) {
+        parts.push("\n");
+      }
+      parts.push("limit ", limit.toString());
+    }
+    return parts;
+  }
+
+  parameterPlaceholder(index: number): string {
+    return `$${index}`;
+  }
 }

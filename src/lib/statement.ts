@@ -6,6 +6,7 @@ import {
   OrderByItem,
   QueryParam,
 } from "./expression";
+import { ExprProvider } from "./expr-provider";
 
 export interface Query {
   queryText: string;
@@ -14,6 +15,7 @@ export interface Query {
 
 export interface BuildQueryParams {
   sourceQuery: Query;
+  exprProvider: ExprProvider;
 }
 
 
@@ -47,6 +49,7 @@ export class Statement {
 
   buildQuery(params: BuildQueryParams): Query {
     const sourceQuery = params.sourceQuery;
+    const exprProvider = params.exprProvider;
     const paramValues = [...(sourceQuery.paramValues || [])];
 
     let paramIndex = paramValues.length;
@@ -81,11 +84,9 @@ export class Statement {
       );
     }
 
-    if (this.offset !== undefined) {
-      sqlTextItems.push(`offset ${this.offset}`);
-    }
-    if (this.limit !== undefined) {
-      sqlTextItems.push(`limit ${this.limit}`);
+    if (this.offset !== undefined || this.limit !== undefined) {
+      const limitOffsetParts = exprProvider.limitOffset(this.offset, this.limit);
+      sqlTextItems.push(...limitOffsetParts);
     }
 
     return {

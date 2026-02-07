@@ -16,4 +16,7 @@ export interface ExprProvider {
   in(params: any[]): any[];
 
   count(params: any[]): any[];
+
+  limitOffset(offset?: number, limit?: number): string[];
+  parameterPlaceholder(index: number): string;
 }
