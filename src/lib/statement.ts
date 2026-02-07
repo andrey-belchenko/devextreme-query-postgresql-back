@@ -84,13 +84,30 @@ export class Statement {
       );
     }
 
+    let queryText = sqlTextItems.join("\n");
+
+    // Handle pagination: check if provider supports query wrapping (e.g., Oracle ROWNUM)
     if (this.offset !== undefined || this.limit !== undefined) {
-      const limitOffsetParts = exprProvider.limitOffset(this.offset, this.limit);
-      sqlTextItems.push(...limitOffsetParts);
+      if (exprProvider.wrapQueryForPagination) {
+        const wrappedResult = exprProvider.wrapQueryForPagination(queryText, this.offset, this.limit, paramIndex);
+        if (wrappedResult !== null) {
+          queryText = wrappedResult.queryText;
+          // Add pagination parameter values
+          paramValues.push(...wrappedResult.paramValues);
+        } else {
+          // Provider returned null, use append approach
+          const limitOffsetParts = exprProvider.limitOffset(this.offset, this.limit);
+          queryText = queryText + "\n" + limitOffsetParts.join("");
+        }
+      } else {
+        // Provider doesn't support wrapping, use append approach
+        const limitOffsetParts = exprProvider.limitOffset(this.offset, this.limit);
+        queryText = queryText + "\n" + limitOffsetParts.join("");
+      }
     }
 
     return {
-      queryText: sqlTextItems.join("\n"),
+      queryText,
       paramValues,
     };
   }

@@ -19,4 +19,5 @@ export interface ExprProvider {
 
   limitOffset(offset?: number, limit?: number): string[];
   parameterPlaceholder(index: number): string;
+  wrapQueryForPagination?(queryText: string, offset: number | undefined, limit: number | undefined, startParamIndex: number): { queryText: string; paramValues: any[] } | null;
 }
