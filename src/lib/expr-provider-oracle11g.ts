@@ -132,3 +132,23 @@ export class ExprProviderOracle11g implements ExprProvider {
     };
   }
 }
+
+
+
+function toOracleLiteral(value: any): string {
+  if (typeof value === 'string') {
+      const escapedString = value.replace(/'/g, "''''");
+      return `''${escapedString}''`;
+  } else if (typeof value === 'number') {
+      return value.toString();
+  } else if (value instanceof Date) {
+      const year = value.getFullYear();
+      const month = (value.getMonth() + 1).toString().padStart(2, '0');
+      const day = value.getDate().toString().padStart(2, '0');
+      return `DATE''${year}-${month}-${day}''`;
+  } else if (Array.isArray(value)) {
+      return `(${value.map(it => toOracleLiteral(it)).join()})`;
+  } else {
+      throw new Error('Unsupported type');
+  }
+}
