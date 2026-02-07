@@ -84,3 +84,5 @@ export async function queryOracle(
   const result = await executor.execute(statements);
   return result;
 }
+
+
