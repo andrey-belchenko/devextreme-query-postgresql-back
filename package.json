@@ -12,6 +12,7 @@
     "prepublishOnly": "npm run build",
     "dev": "nodemon src/dev/app.ts",
     "generate-sample-data": "node src/dev/sample-data-generator/sales.js",
+    "generate-sample-data-oracle11g": "node src/dev/sample-data-generator/sales-oracle11g.js",
     "pg-to-mongo": "node src/sample-data-generator/pg-to-mongo.js"
   },
   "author": "Your Name",
@@ -36,6 +37,7 @@
     "cors": "^2.8.5",
     "devextreme-query-mongodb": "^2.0.16",
     "express": "^5.1.0",
-    "mongodb": "^6.16.0"
+    "mongodb": "^6.16.0",
+    "oracledb": "^6.0.3"
   }
 }
