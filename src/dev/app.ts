@@ -5,7 +5,7 @@ import { execQuery } from "./mongo";
 import { ExprProviderPg } from "../lib/expr-provider-pg";
 import { ExprProviderOracle11g } from "../lib/expr-provider-oracle11g";
 import { LoadOptionsParser } from "../lib/load-options-parser";
-import { query } from "../lib";
+import { queryOracle, queryPg } from "../lib";
 import { ExecResult } from "../lib/statement-executor";
 const { Pool } = require("pg");
 const oracledb = require("oracledb");
@@ -60,7 +60,7 @@ app.post("/sales", async (req, res) => {
         p.product_id = s.product_id
     `;
 
-    const result = await query(pgClient, loadOptions, queryText);
+    const result = await queryPg(pgClient, loadOptions, queryText);
     // const result = await processor.execute();
     console.log(`COUNT: ${result.data.length} TOTAL: ${result.totalCount}`);
     console.log("PG RESULT:");
@@ -83,45 +83,6 @@ app.post("/oracle/sales", async (req, res) => {
   try {
     connection = await oracledb.getConnection(ORACLE_CONFIG);
     
-    // Inline queryOracle function
-    async function queryOracle(
-      oracleConnection: any,
-      loadOptions: any,
-      sourceQueryText: string,
-      sourceQueryParamValues?: any[]
-    ): Promise<ExecResult> {
-      const exprProvider = new ExprProviderOracle11g();
-      const parser = new LoadOptionsParser({
-        exprProvider: exprProvider,
-      });
-      const statements = parser.parse(loadOptions);
-      const executor = new StatementsExecutor({
-        handler: async (statement) => {
-          const query = statement.buildQuery({
-            sourceQuery: {
-              queryText: sourceQueryText,
-              paramValues: sourceQueryParamValues,
-            },
-            exprProvider: exprProvider,
-          });
-          const result = await oracleConnection.execute(
-            query.queryText,
-            query.paramValues || [],
-            { outFormat: oracledb.OUT_FORMAT_OBJECT }
-          );
-          // Convert Oracle uppercase column names to lowercase to match PostgreSQL behavior
-          return result.rows.map((row: any) => {
-            const lowerCaseRow: any = {};
-            for (const key in row) {
-              lowerCaseRow[key.toLowerCase()] = row[key];
-            }
-            return lowerCaseRow;
-          });
-        },
-      });
-      const result = await executor.execute(statements);
-      return result;
-    }
 
     const loadOptions = req.body.loadOptions as LoadOptions;
     console.log("ORACLE LOAD OPTIONS:");
