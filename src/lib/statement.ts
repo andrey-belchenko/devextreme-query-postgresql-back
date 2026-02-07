@@ -57,7 +57,10 @@ export class Statement {
     for (const param of this.params) {
       paramIndex++;
       param.index = paramIndex;
-      paramValues.push(param.value);
+      // Skip adding to paramValues if skipInParams is true (e.g., Oracle array literals)
+      if (!param.skipInParams) {
+        paramValues.push(param.value);
+      }
     }
 
     const srcAlias = "src";

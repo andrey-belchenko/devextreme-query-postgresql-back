@@ -1,4 +1,5 @@
 import { ExprProvider } from "./expr-provider";
+import { QueryParam, ExprText } from "./expression";
 
 export class ExprProviderOracle11g implements ExprProvider {
   and(params: any[]) {
@@ -54,9 +55,18 @@ export class ExprProviderOracle11g implements ExprProvider {
   }
 
   in(params: any[]) {
-    // Oracle 11g: For array parameters, use TABLE function or direct IN
-    // Most Oracle drivers handle array parameters in IN clauses automatically
-    // Format: column IN (:param) where :param is an array bind variable
+    // Oracle 11g: For array parameters, embed values directly as SQL literals
+    // Check if params[1] is a QueryParam with an array value
+    if (params[1] instanceof QueryParam && Array.isArray(params[1].value)) {
+      // Extract the array value and convert to Oracle literal
+      const arrayValue = params[1].value;
+      const literal = toOracleLiteral(arrayValue);
+      // Mark the QueryParam to skip adding to paramValues
+      params[1].skipInParams = true;
+      // Return ExprText with the literal instead of the QueryParam
+      return [params[0], " IN ", new ExprText(literal)];
+    }
+    // For non-array parameters, use standard IN clause with parameter placeholder
     return [params[0], " IN ", params[1]];
   }
 
@@ -137,17 +147,17 @@ export class ExprProviderOracle11g implements ExprProvider {
 
 function toOracleLiteral(value: any): string {
   if (typeof value === 'string') {
-      const escapedString = value.replace(/'/g, "''''");
-      return `''${escapedString}''`;
+      const escapedString = value.replace(/'/g, "''");
+      return `'${escapedString}'`;
   } else if (typeof value === 'number') {
       return value.toString();
   } else if (value instanceof Date) {
       const year = value.getFullYear();
       const month = (value.getMonth() + 1).toString().padStart(2, '0');
       const day = value.getDate().toString().padStart(2, '0');
-      return `DATE''${year}-${month}-${day}''`;
+      return `DATE'${year}-${month}-${day}'`;
   } else if (Array.isArray(value)) {
-      return `(${value.map(it => toOracleLiteral(it)).join()})`;
+      return `(${value.map(it => toOracleLiteral(it)).join(', ')})`;
   } else {
       throw new Error('Unsupported type');
   }

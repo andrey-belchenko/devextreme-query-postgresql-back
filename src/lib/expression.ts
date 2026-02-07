@@ -43,6 +43,7 @@ export class QueryParam extends ExprNode {
     this.exprProvider = exprProvider;
   }
   index: number | undefined = undefined;
+  skipInParams?: boolean;
   toSql(): string {
     if (this.index === undefined) {
       throw new Error("QueryParam index must be set before calling toSql()");
